@@ -183,6 +183,7 @@ class Card(Base):
     cardSupplyId: Mapped[int] = mapped_column(ForeignKey('cardSupplies.id'))
     cardSupply: Mapped["CardSupply"] = relationship()
     availableEN: Mapped[bool] = mapped_column(Boolean)
+    sideStories: Mapped[List["CardEpisode"]] = relationship()
 
     def __hash__(self):
         return self.id
@@ -197,18 +198,29 @@ class Card(Base):
             "Card Name": self.prefix,
             "Character": f'{self.character.firstName} {self.character.givenName}' if self.character.firstName else self.character.givenName,
             "Group": self.character.unit.unitName,
-            "Subgroup": self.supportUnit.unitName if self.supportUnit is not None else '',
+            "Subgroup": self.supportUnit.unitName if self.supportUnit is not None else None,
             "Attribute": str(Attributes(self.attribute)),
             "Rarity": str(Rarity(self.cardRarityType)),
-            "Release Date": self.releaseAt,
+            "Release Date": str(self.releaseAt),
             "Availability": str(self.cardSupply),
             "Skill": str(SkillType(self.skill.skillType)),
             "Thumbnail URL": self.get_thumbnail_url(),
             "Available on EN": self.availableEN,
+            "Has Side Stories": len(self.sideStories) > 0
         }
 
     def to_row(self) -> List:
-        return self.asdict().items()
+        return list(self.asdict().values())
+
+    def get_row_headers(self) -> List[str]:
+        return list(self.asdict().keys())
+    
+class CardEpisode(Base):
+    __tablename__ = 'cardEpisodes'
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer)
+    cardId: Mapped[int] = mapped_column(ForeignKey('cards.id'))
 
 
 class MusicArtist(Base):
@@ -273,10 +285,16 @@ class Music(Base):
         return None
 
     def get_diff_stats(self) -> Dict:
-        return {
-            **{f'{Difficulty(d.difficulty)} LV': d.playLevel for d in self.difficulties},
-            **{f'{Difficulty(d.difficulty)} Notes': d.totalNoteCount for d in self.difficulties}
-        }
+        levels = {
+            f'{Difficulty(d.difficulty)} LV': d.playLevel for d in self.difficulties}
+        notes = {
+            f'{Difficulty(d.difficulty)} Notes': d.totalNoteCount for d in self.difficulties}
+        
+        if len(levels) < 6:
+            levels["Append LV"] = ''
+            notes["Append Notes"] = ''
+        
+        return {**levels, **notes}
 
     def get_units(self) -> List:
         return [str(MusicTags(t.musicTag)) for t in self.tags if t.musicTag != MusicTags.ALL.value]
@@ -291,8 +309,8 @@ class Music(Base):
             "Lyricist": self.lyricist,
             "Composer": self.composer,
             "Arranger": self.arranger,
-            "Published": self.publishedAt,
-            "Released": self.releasedAt,
+            "Published": str(self.publishedAt),
+            "Released": str(self.releasedAt),
             "Filler Sec": self.fillerSec,
             "Jacket URL": self.get_jacket_url(),
             "3D MV": self.catMV,
@@ -304,7 +322,10 @@ class Music(Base):
         }
 
     def to_row(self) -> List:
-        return self.asdict().items()
+        return list(self.asdict().values())
+
+    def get_row_headers(self) -> List[str]:
+        return list(self.asdict().keys())
 
 
 class MusicDifficulty(Base):
