@@ -188,8 +188,10 @@ class Card(Base):
     def __hash__(self):
         return self.id
 
-    def get_thumbnail_url(self):
-        return f'https://storage.sekai.best/sekai-jp-assets/thumbnail/chara/{self.assetBundleName}_normal.webp'
+    def get_thumbnail_url(self, trained: bool):
+        if trained and Rarity(self.cardRarityType) in [Rarity.ONE, Rarity.TWO, Rarity.BIRTHDAY]:
+            return None
+        return f'https://storage.sekai.best/sekai-jp-assets/thumbnail/chara/{self.assetBundleName}_{"after_training" if trained else "normal"}.webp'
 
     def asdict(self) -> Dict:
         return {
@@ -204,9 +206,10 @@ class Card(Base):
             "Release Date": str(self.releaseAt),
             "Availability": str(self.cardSupply),
             "Skill": str(SkillType(self.skill.skillType)),
-            "Thumbnail URL": self.get_thumbnail_url(),
+            "Thumbnail URL Normal": self.get_thumbnail_url(False),
             "Available on EN": self.availableEN,
-            "Has Side Stories": len(self.sideStories) > 0
+            "Has Side Stories": len(self.sideStories) > 0,
+            "Thumbnail URL Trained": self.get_thumbnail_url(True),
         }
 
     def to_row(self) -> List:
