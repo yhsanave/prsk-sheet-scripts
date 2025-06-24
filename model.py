@@ -86,6 +86,20 @@ class MusicTags(Enum):
         }.get(self.value)
 
 
+# Event Priority Constants
+RARITY_EVENT_PRIORITY = [Rarity.FOUR, Rarity.BIRTHDAY,
+                         Rarity.THREE, Rarity.TWO, Rarity.ONE]
+SKILL_EVENT_PRIORITY = [SkillType.BLOOM_FES_SCORER, SkillType.UNIT_SCORER, SkillType.LIFE_SCORER, SkillType.COMBO_SCORER,
+                        SkillType.PERFECT_SCORER, SkillType.SCORER, SkillType.PERFECT_LOCKER, SkillType.HEALER, SkillType.BIRTHDAY_SCORER]
+EVENT_PRIORITY_TEXT_MAP = [
+    '4⭐ BloomFes', '4⭐ U-Scorer', '4⭐ ColorFes', '4⭐ ColorFes', '4⭐ P-Scorer', '4⭐ Scorer', '4⭐ P-Locker', '4⭐ Healer', '4⭐ BD-Scorer',
+    '🎀 BloomFes', '🎀 U-Scorer', '🎀 ColorFes', '🎀 ColorFes', '🎀 P-Scorer', '🎀 Scorer', '🎀 P-Locker', '🎀 Healer', '🎀 BD-Scorer',
+    '3⭐ BloomFes', '3⭐ U-Scorer', '3⭐ ColorFes', '3⭐ ColorFes', '3⭐ P-Scorer', '3⭐ Scorer', '3⭐ P-Locker', '3⭐ Healer', '3⭐ BD-Scorer',
+    '2⭐ BloomFes', '2⭐ U-Scorer', '2⭐ ColorFes', '2⭐ ColorFes', '2⭐ P-Scorer', '2⭐ Scorer', '2⭐ P-Locker', '2⭐ Healer', '2⭐ BD-Scorer',
+    '1⭐ BloomFes', '1⭐ U-Scorer', '1⭐ ColorFes', '1⭐ ColorFes', '1⭐ P-Scorer', '1⭐ Scorer', '1⭐ P-Locker', '1⭐ Healer', '1⭐ BD-Scorer',
+]
+
+
 class Unit(Base):
     __tablename__ = 'units'
 
@@ -210,6 +224,7 @@ class Card(Base):
             "Available on EN": self.availableEN,
             "Has Side Stories": len(self.sideStories) > 0,
             "Thumbnail URL Trained": self.get_thumbnail_url(True),
+            **self.get_event_priority()
         }
 
     def to_row(self) -> List:
@@ -218,9 +233,21 @@ class Card(Base):
     def get_row_headers(self) -> List[str]:
         return list(self.asdict().keys())
     
+    def get_event_priority(self) -> Dict:
+        '''Returns the event priority values as a dict for output to sheets. Used in Event Coverage table.'''
+        
+        priority = RARITY_EVENT_PRIORITY.index(Rarity(self.cardRarityType)) * len(SKILL_EVENT_PRIORITY) + SKILL_EVENT_PRIORITY.index(SkillType(self.skill.skillType))
+        
+        return {
+            "Event Priority Int": priority,
+            "Event Priority Str": f'{priority:03d}',
+            "Event Priority Text": EVENT_PRIORITY_TEXT_MAP[priority]
+        }
+
+
 class CardEpisode(Base):
     __tablename__ = 'cardEpisodes'
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
     seq: Mapped[int] = mapped_column(Integer)
     cardId: Mapped[int] = mapped_column(ForeignKey('cards.id'))
@@ -246,6 +273,14 @@ class MusicTag(Base):
 
     def __hash__(self):
         return self.id
+
+
+class MusicOriginal(Base):
+    __tablename__ = 'musicOriginals'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    musicId: Mapped[int] = mapped_column(ForeignKey('musics.id'))
+    videoLink: Mapped[str] = mapped_column(String(100))
 
 
 class Music(Base):
@@ -274,6 +309,7 @@ class Music(Base):
 
     difficulties: Mapped[List["MusicDifficulty"]] = relationship()
     tags: Mapped[List["MusicTag"]] = relationship()
+    videoLink: Mapped["MusicOriginal"] = relationship()
 
     def __hash__(self):
         return self.id
@@ -292,11 +328,11 @@ class Music(Base):
             f'{Difficulty(d.difficulty)} LV': d.playLevel for d in self.difficulties}
         notes = {
             f'{Difficulty(d.difficulty)} Notes': d.totalNoteCount for d in self.difficulties}
-        
+
         if len(levels) < 6:
             levels["Append LV"] = ''
             notes["Append Notes"] = ''
-        
+
         return {**levels, **notes}
 
     def get_units(self) -> List:
@@ -321,7 +357,8 @@ class Music(Base):
             "Original": self.catOriginal,
             "Image": self.catImage,
             "Available on EN": self.availableEN,
-            **self.get_diff_stats()
+            **self.get_diff_stats(),
+            "Video Link": self.videoLink.videoLink if self.videoLink else None
         }
 
     def to_row(self) -> List:

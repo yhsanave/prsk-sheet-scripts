@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 import config
 import os
 import json
-from model import Base, Card, CardEpisode, CardSupply, GameCharacter, Music, MusicArtist, MusicDifficulty, MusicTag, Skill, Unit
+from model import Base, Card, CardEpisode, CardSupply, GameCharacter, Music, MusicArtist, MusicDifficulty, MusicOriginal, MusicTag, Skill, Unit
 
 
 def merge_data(subset: Iterable, superset: Iterable) -> List:
@@ -208,6 +208,27 @@ def import_data():
     musicTags = merge_data(tagsEN, tagsJP)
     session.add_all(musicTags)
     print(f"Imported {len(musicTags)} music tags.")
+    
+    # Import Music Originals
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'musicOriginals.json'), 'r', encoding="utf8") as f:
+        musicOrigData: List[Dict] = json.load(f)
+        musicOrigEN = map(lambda o: MusicOriginal(
+            id=o["id"],
+            musicId=o["musicId"],
+            videoLink=o["videoLink"]
+        ), musicOrigData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'musicOriginals.json'), 'r', encoding="utf8") as f:
+        musicOrigData: List[Dict] = json.load(f)
+        musicOrigJP = map(lambda o: MusicOriginal(
+            id=o["id"],
+            musicId=o["musicId"],
+            videoLink=o["videoLink"]
+        ), musicOrigData)
+
+    musicOrigs = merge_data(musicOrigEN, musicOrigJP)
+    session.add_all(musicOrigs)
+    print(f"Imported {len(musicOrigs)} music originals.")
 
     # Import Music
     with open(os.path.join(config.DATA_DIRECTORY_EN, 'musics.json'), 'r', encoding="utf8") as f:
