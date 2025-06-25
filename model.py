@@ -1,3 +1,4 @@
+import datetime
 from typing import Dict, List, Optional
 from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -214,7 +215,7 @@ class Card(Base):
             "Card Name": self.prefix,
             "Character": f'{self.character.firstName} {self.character.givenName}' if self.character.firstName else self.character.givenName,
             "Group": self.character.unit.unitName,
-            "Subgroup": self.supportUnit.unitName if self.supportUnit is not None else None,
+            "Subgroup": self.supportUnit.unitName if self.supportUnit is not None else self.character.unit.unitName,
             "Attribute": str(Attributes(self.attribute)),
             "Rarity": str(Rarity(self.cardRarityType)),
             "Release Date": str(self.releaseAt),
@@ -232,12 +233,13 @@ class Card(Base):
 
     def get_row_headers(self) -> List[str]:
         return list(self.asdict().keys())
-    
+
     def get_event_priority(self) -> Dict:
         '''Returns the event priority values as a dict for output to sheets. Used in Event Coverage table.'''
-        
-        priority = RARITY_EVENT_PRIORITY.index(Rarity(self.cardRarityType)) * len(SKILL_EVENT_PRIORITY) + SKILL_EVENT_PRIORITY.index(SkillType(self.skill.skillType))
-        
+
+        priority = RARITY_EVENT_PRIORITY.index(Rarity(self.cardRarityType)) * len(
+            SKILL_EVENT_PRIORITY) + SKILL_EVENT_PRIORITY.index(SkillType(self.skill.skillType))
+
         return {
             "Event Priority Int": priority,
             "Event Priority Str": f'{priority:03d}',
@@ -315,7 +317,7 @@ class Music(Base):
         return self.id
 
     def get_jacket_url(self):
-        return f'https://storage.sekai.best/sekai-en-assets/music/jacket/{self.assetBundleName}/{self.assetBundleName}.webp'
+        return f'https://storage.sekai.best/sekai-{"en" if self.availableEN else "jp"}-assets/music/jacket/{self.assetBundleName}/{self.assetBundleName}.webp'
 
     def get_difficulty(self, diff: Difficulty):
         diffs = [d for d in self.difficulties if d.difficulty == diff]
@@ -324,14 +326,32 @@ class Music(Base):
         return None
 
     def get_diff_stats(self) -> Dict:
-        levels = {
-            f'{Difficulty(d.difficulty)} LV': d.playLevel for d in self.difficulties}
-        notes = {
-            f'{Difficulty(d.difficulty)} Notes': d.totalNoteCount for d in self.difficulties}
+        if not self.is_removed():
+            levels = {
+                f'{Difficulty(d.difficulty)} LV': d.playLevel for d in self.difficulties}
+            notes = {
+                f'{Difficulty(d.difficulty)} Notes': d.totalNoteCount for d in self.difficulties}
+        else:
+            levels = {}
+            notes = {}
 
-        if len(levels) < 6:
-            levels["Append LV"] = ''
-            notes["Append Notes"] = ''
+        # Default to empty strings for missing difficulties
+        levels = {
+            'Easy LV': levels.get('Easy LV', ''),
+            'Normal LV': levels.get('Normal LV', ''),
+            'Hard LV': levels.get('Hard LV', ''),
+            'Expert LV': levels.get('Expert LV', ''),
+            'Master LV': levels.get('Master LV', ''),
+            'Append LV': levels.get('Append LV', '')
+        }
+        notes = {
+            'Easy Notes': notes.get('Easy Notes', ''),
+            'Normal Notes': notes.get('Normal Notes', ''),
+            'Hard Notes': notes.get('Hard Notes', ''),
+            'Expert Notes': notes.get('Expert Notes', ''),
+            'Master Notes': notes.get('Master Notes', ''),
+            'Append Notes': notes.get('Append Notes', '')
+        }
 
         return {**levels, **notes}
 
@@ -356,7 +376,7 @@ class Music(Base):
             "2D MV": self.catMV2D,
             "Original": self.catOriginal,
             "Image": self.catImage,
-            "Available on EN": self.availableEN,
+            "Available on EN": self.availableEN if not self.is_removed() else None,
             **self.get_diff_stats(),
             "Video Link": self.videoLink.videoLink if self.videoLink else None
         }
@@ -366,6 +386,10 @@ class Music(Base):
 
     def get_row_headers(self) -> List[str]:
         return list(self.asdict().keys())
+
+    def is_removed(self) -> bool:
+        '''Returns True if the song has been removed. Removed songs have no release date, so it gets set to 1969-12-31.'''
+        return self.releasedAt < datetime.date(1970, 1, 1)
 
 
 class MusicDifficulty(Base):
