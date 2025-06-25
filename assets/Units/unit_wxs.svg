@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="133.183" height="130.103" viewBox="0 0 133.183 130.103">
+  <defs>
+    <linearGradient id="a" x1="66.592" y1="126.603" x2="66.592" y2="5.603" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe000"/>
+      <stop offset="1" stop-color="#fefe00"/>
+    </linearGradient>
+  </defs>
+  <g>
+    <g>
+      <path d="M98.592,80.6l-32-36-32,36-31-14,1,60h124l1-60Zm-71.25,35-6.75-8.5,6.75-8.5,6.75,8.5Zm39.25-.5-8.972-12,8.972-12,8.971,12Zm39.25.5-6.75-8.5,6.75-8.5,6.75,8.5Z" fill="none" stroke="#fff" stroke-miterlimit="6" stroke-width="7"/>
+      <polygon points="66.592 5.603 52.592 23.103 66.592 40.603 80.592 23.103 66.592 5.603" fill="none" stroke="#fff" stroke-miterlimit="6" stroke-width="7"/>
+    </g>
+    <g>
+      <path d="M98.592,80.6l-32-36-32,36-31-14,1,60h124l1-60Zm-71.25,35-6.75-8.5,6.75-8.5,6.75,8.5Zm39.25-.5-8.972-12,8.972-12,8.971,12Zm39.25.5-6.75-8.5,6.75-8.5,6.75,8.5Z" fill="url(#a)"/>
+      <polygon points="66.592 5.603 52.592 23.103 66.592 40.603 80.592 23.103 66.592 5.603" fill="url(#a)"/>
+    </g>
+  </g>
+</svg>
