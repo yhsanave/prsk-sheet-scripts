@@ -1,8 +1,9 @@
 import datetime
+from enum import Enum
 from typing import Dict, List, Optional
+
 from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from enum import Enum
 
 
 class Base(DeclarativeBase):
@@ -59,6 +60,38 @@ class Difficulty(Enum):
     EXPERT = "expert"
     MASTER = "master"
     APPEND = "append"
+
+    def __str__(self):
+        return self.name.title()
+
+
+class HonorRarity(Enum):
+    LOW = "low"
+    MIDDLE = "middle"
+    HIGH = "high"
+    HIGHEST = "highest"
+
+    def __str__(self):
+        return self.value.title()
+
+
+class HonorType(Enum):
+    ACHIEVEMENT = "achievement"
+    CHARACTER = "character"
+    EVENT = "event"
+    RANK_MATCH = "rank_match"
+
+    def __str__(self):
+        return self.value.title()
+
+
+class HonorMissionType(Enum):
+    EASY_FC = "easy_full_combo"
+    NORMAL_FC = "normal_full_combo"
+    HARD_FC = "hard_full_combo"
+    EXPERT_FC = "expert_full_combo"
+    MASTER_FC = "master_full_combo"
+    MASTER_AP = "master_full_perfect"
 
     def __str__(self):
         return self.name.title()
@@ -444,3 +477,44 @@ class GachaPickup(Base):
 
     def __hash__(self):
         return self.id
+
+
+class HonorLevel(Base):
+    __tablename__ = 'honorLevels'
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    honorId: Mapped[int] = mapped_column(ForeignKey('honors.id'))
+    level: Mapped[int] = mapped_column(Integer)
+    bonus: Mapped[int] = mapped_column(Integer)
+    description: Mapped[str] = mapped_column(String(200))
+    assetbundleName: Mapped[Optional[str]] = mapped_column(String(30))
+    honorRarity: Mapped[Optional[HonorRarity]] = mapped_column(String(7))
+
+
+class HonorGroup(Base):
+    __tablename__ = 'honorGroups'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    honorType: Mapped[HonorType] = mapped_column(String(30))
+    backgroundAssetbundleName: Mapped[Optional[str]] = mapped_column(
+        String(50))
+    frameName: Mapped[Optional[str]] = mapped_column(String(50))
+
+    honors: Mapped[List["Honor"]] = relationship(back_populates='group')
+
+
+class Honor(Base):
+    __tablename__ = 'honors'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer)
+    groupId: Mapped[int] = mapped_column(ForeignKey('honorGroups.id'))
+    group: Mapped[HonorGroup] = relationship(back_populates='honors')
+    honorRarity: Mapped[Optional[HonorRarity]] = mapped_column(String(7))
+    name: Mapped[str] = mapped_column(String(100))
+    assetbundleName: Mapped[Optional[str]] = mapped_column(String(30))
+    honorMissionType: Mapped[Optional[HonorMissionType]
+                             ] = mapped_column(String(20))
+
+    levels: Mapped[List[HonorLevel]] = relationship()

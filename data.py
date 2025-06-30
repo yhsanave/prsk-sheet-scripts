@@ -1,12 +1,16 @@
+import json
+import os
 from datetime import datetime
 from typing import Dict, Iterable, List
+
 from git import Repo
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 import config
-import os
-import json
-from model import Base, Card, CardEpisode, CardSupply, GameCharacter, Music, MusicArtist, MusicDifficulty, MusicOriginal, MusicTag, Skill, Unit
+from model import (Base, Card, CardEpisode, CardSupply, GameCharacter, Honor,
+                   HonorGroup, HonorLevel, Music, MusicArtist, MusicDifficulty,
+                   MusicOriginal, MusicTag, Skill, Unit)
 
 
 def merge_data(subset: Iterable, superset: Iterable) -> List:
@@ -16,22 +20,29 @@ def merge_data(subset: Iterable, superset: Iterable) -> List:
     missing = [x for x in superset if x.id not in subIds]
     return [*subset, *missing]
 
+
 def fetch_data():
-    """Clone/Pull the data repositories."""    
+    """Clone/Pull the data repositories."""
     if not os.path.exists(config.DATA_DIRECTORY_JP):
-        print(f"JP Repository not found. Cloning repository {config.DATA_REPOSITORY_JP_URL}...")
-        repo = Repo.clone_from(config.DATA_REPOSITORY_JP_URL, config.DATA_DIRECTORY_JP)
+        print(
+            f"JP Repository not found. Cloning repository {config.DATA_REPOSITORY_JP_URL}...")
+        repo = Repo.clone_from(
+            config.DATA_REPOSITORY_JP_URL, config.DATA_DIRECTORY_JP)
     else:
-        print(f"JP Repository found at {config.DATA_DIRECTORY_JP}. Pulling latest changes...")
+        print(
+            f"JP Repository found at {config.DATA_DIRECTORY_JP}. Pulling latest changes...")
         repo = Repo(config.DATA_DIRECTORY_JP).remotes.origin.pull()
 
     if not os.path.exists(config.DATA_DIRECTORY_EN):
-        print(f"EN Repository not found. Cloning repository {config.DATA_REPOSITORY_EN_URL}...")
-        repo = Repo.clone_from(config.DATA_REPOSITORY_EN_URL, config.DATA_DIRECTORY_EN)
+        print(
+            f"EN Repository not found. Cloning repository {config.DATA_REPOSITORY_EN_URL}...")
+        repo = Repo.clone_from(
+            config.DATA_REPOSITORY_EN_URL, config.DATA_DIRECTORY_EN)
     else:
         print(
             f"EN Repository found at {config.DATA_DIRECTORY_EN}. Pulling latest changes...")
         repo = Repo(config.DATA_DIRECTORY_EN).remotes.origin.pull()
+
 
 def import_data():
     """Parse the data from the repository and insert it into the database."""
@@ -94,7 +105,6 @@ def import_data():
             cardSupplyType=s["cardSupplyType"]
         ), supplyData)
 
-
     with open(os.path.join(config.DATA_DIRECTORY_JP, 'cardSupplies.json'), 'r', encoding="utf8") as f:
         supplyData: List[Dict] = json.load(f)
         suppliesJP = map(lambda s: CardSupply(
@@ -135,7 +145,9 @@ def import_data():
             attribute=c["attr"],
             supportUnitId=c["supportUnit"] if c["supportUnit"] != "none" else None,
             skillId=c["skillId"],
-            releaseAt=datetime.fromtimestamp(c["releaseAt"]/1000 + 31557600).date(), # add a year to JP release dates
+            # add a year to JP release dates
+            releaseAt=datetime.fromtimestamp(
+                c["releaseAt"]/1000 + 31557600).date(),
             assetBundleName=c["assetbundleName"],
             cardSupplyId=c["cardSupplyId"],
             availableEN=False
@@ -144,7 +156,7 @@ def import_data():
     cards = merge_data(cardsEN, cardsJP)
     session.add_all(cards)
     print(f"Imported {len(cards)} cards.")
-    
+
     # Import Card Episodes
     with open(os.path.join(config.DATA_DIRECTORY_EN, 'cardEpisodes.json'), 'r', encoding="utf8") as f:
         episodeData: List[Dict] = json.load(f)
@@ -153,7 +165,6 @@ def import_data():
             seq=e["seq"],
             cardId=e["cardId"],
         ), episodeData)
-
 
     with open(os.path.join(config.DATA_DIRECTORY_JP, 'cardEpisodes.json'), 'r', encoding="utf8") as f:
         episodeData: List[Dict] = json.load(f)
@@ -208,7 +219,7 @@ def import_data():
     musicTags = merge_data(tagsEN, tagsJP)
     session.add_all(musicTags)
     print(f"Imported {len(musicTags)} music tags.")
-    
+
     # Import Music Originals
     with open(os.path.join(config.DATA_DIRECTORY_EN, 'musicOriginals.json'), 'r', encoding="utf8") as f:
         musicOrigData: List[Dict] = json.load(f)
@@ -242,7 +253,8 @@ def import_data():
             composer=m["composer"],
             arranger=m["arranger"],
             assetBundleName=m["assetbundleName"],
-            releasedAt=datetime.fromtimestamp(m.get("releasedAt", 0)/1000).date(),
+            releasedAt=datetime.fromtimestamp(
+                m.get("releasedAt", 0)/1000).date(),
             publishedAt=datetime.fromtimestamp(m["publishedAt"]/1000).date(),
             fillerSec=m["fillerSec"],
             catMV="mv" in m["categories"],
@@ -263,8 +275,11 @@ def import_data():
             composer=m["composer"],
             arranger=m["arranger"],
             assetBundleName=m["assetbundleName"],
-            releasedAt=datetime.fromtimestamp(m.get("releasedAt", 0)/1000).date(),
-            publishedAt=datetime.fromtimestamp(m["publishedAt"]/1000 + 31557600).date(), # add a year to JP release dates
+            releasedAt=datetime.fromtimestamp(
+                m.get("releasedAt", 0)/1000).date(),
+            # add a year to JP release dates
+            publishedAt=datetime.fromtimestamp(
+                m["publishedAt"]/1000 + 31557600).date(),
             fillerSec=m["fillerSec"],
             catMV="mv" in m["categories"],
             catMV2D="mv_2d" in m["categories"],
@@ -302,12 +317,88 @@ def import_data():
     session.add_all(difficulties)
     print(f"Imported {len(difficulties)} music difficulties.")
 
+    # Import Honors
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'honors.json'), 'r', encoding="utf8") as f:
+        honorData: List[Dict] = json.load(f)
+        honorsEN = map(lambda h: Honor(
+            id=h["id"],
+            seq=h["seq"],
+            groupId=h["groupId"],
+            name=h["name"],
+            honorRarity=h.get("honorRarity"),
+            assetbundleName=h.get("assetbundleName"),
+            honorMissionType=h.get("honorMissionType")
+        ), honorData)
+        honorLevelsEN = map(lambda l: HonorLevel(
+            id=f'{l["honorId"]}-{l["level"]}',
+            honorId=l["honorId"],
+            level=l["level"],
+            bonus=l["bonus"],
+            description=l["description"],
+            honorRarity=l.get("honorRarity"),
+            assetbundleName=l.get("assetbundleName")
+        ), [l for ls in map(lambda h: h["levels"], honorData) for l in ls])
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'honors.json'), 'r', encoding="utf8") as f:
+        honorData: List[Dict] = json.load(f)
+        honorsJP = map(lambda h: Honor(
+            id=h["id"],
+            seq=h["seq"],
+            groupId=h["groupId"],
+            name=h["name"],
+            honorRarity=h.get("honorRarity"),
+            assetbundleName=h.get("assetbundleName"),
+            honorMissionType=h.get("honorMissionType")
+        ), honorData)
+        honorLevelsJP = map(lambda l: HonorLevel(
+            id=f'{l["honorId"]}-{l["level"]}',
+            honorId=l["honorId"],
+            level=l["level"],
+            bonus=l["bonus"],
+            description=l["description"],
+            honorRarity=l.get("honorRarity"),
+            assetbundleName=l.get("assetbundleName")
+        ), [l for ls in map(lambda h: h["levels"], honorData) for l in ls])
+
+    honors = merge_data(honorsEN, honorsJP)
+    honorLevels = merge_data(honorLevelsEN, honorLevelsJP)
+    session.add_all(honors)
+    session.add_all(honorLevels)
+    print(f"Imported {len(honors)} honors with {len(honorLevels)} levels.")
+
+    # Import Honor Groups
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'honorGroups.json'), 'r', encoding="utf8") as f:
+        honorGroupData: List[Dict] = json.load(f)
+        honorGroupsEN = map(lambda g: HonorGroup(
+            id=g["id"],
+            name=g["name"],
+            honorType=g["honorType"],
+            backgroundAssetbundleName=g.get("backgroundAssetbundleName"),
+            frameName=g.get("frameName")
+        ), honorGroupData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'honorGroups.json'), 'r', encoding="utf8") as f:
+        honorGroupData: List[Dict] = json.load(f)
+        honorGroupsJP = map(lambda g: HonorGroup(
+            id=g["id"],
+            name=g["name"],
+            honorType=g["honorType"],
+            backgroundAssetbundleName=g.get("backgroundAssetbundleName"),
+            frameName=g.get("frameName")
+        ), honorGroupData)
+
+    honorGroups = merge_data(honorGroupsEN, honorGroupsJP)
+    session.add_all(honorGroups)
+    print(f"Imported {len(honorGroups)} honor groups.")
+
     session.commit()
     session.close()
+
 
 def update_data():
     fetch_data()
     import_data()
-    
+
+
 if __name__ == "__main__":
     update_data()

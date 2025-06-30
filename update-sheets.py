@@ -1,10 +1,19 @@
+import glob
+import os
+from itertools import groupby
 from typing import List
+
 import gspread
-import config
-from model import Card, Music
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+
+import config
 from data import update_data
+from model import Card, Music
+
+GITHUB_BASE_URL = r'https://raw.githubusercontent.com/yhsanave/prsk-sheet-assets/refs/heads/main'
+CR_TITLES_PATH = os.path.join('assets', 'honor_baked', 'character')
+ACHIEVEMENT_TITLES_PATH = os.path.join('assets', 'honor_baked', 'achievement')
 
 # Update Data
 update_data()
@@ -40,3 +49,52 @@ musicSheet = masterSpread.worksheet('Musics')
 musicSheet.clear()
 musicSheet.update([musicHeaders], 'A1')
 musicSheet.update(musicRows, 'A2')
+
+# CR Titles
+print("Writing CR Titles sheet...")
+crTitleSheet = masterSpread.worksheet("CR Titles")
+crTitleSheet.clear()
+crTitleSheet.update([['Main', *range(0, 165, 5)]], 'A1')
+
+crDegrees = glob.glob('**/main/*.png', root_dir=CR_TITLES_PATH, recursive=True)
+rows = []
+for k, g in groupby(crDegrees, lambda p: p.split(os.path.sep)[0]):
+    rows.append([
+        k[3:].replace('-', ' '),
+        *[f'{GITHUB_BASE_URL}/honor_baked/character/{p.replace(os.path.sep, '/')}' for p in g]
+    ])
+crTitleSheet.update(rows, 'A2', value_input_option='USER_ENTERED')
+
+crTitleSheet.update([['Sub', *range(0, 165, 5)]], 'A28')
+crDegrees = glob.glob('**/sub/*.png', root_dir=CR_TITLES_PATH, recursive=True)
+rows = []
+for k, g in groupby(crDegrees, lambda p: p.split(os.path.sep)[0]):
+    rows.append([
+        k[3:].replace('-', ' '),
+        *[f'{GITHUB_BASE_URL}/honor_baked/character/{p.replace(os.path.sep, '/')}' for p in g]
+    ])
+crTitleSheet.update(rows, 'A29', value_input_option='USER_ENTERED')
+
+# Achievement Titles
+print("Writing Achievement sheets...")
+achievementSheetMain = masterSpread.worksheet("Achievements Main")
+achievementDegreesMain = glob.glob('**/main/*.png', root_dir=ACHIEVEMENT_TITLES_PATH, recursive=True)
+rows = []
+for k, g in groupby(achievementDegreesMain, lambda p: p.split(os.path.sep)[0]):
+    rows.append([
+        k[5:].replace('-', ' '),
+        *[f'{GITHUB_BASE_URL}/honor_baked/achievement/{p.replace(os.path.sep, '/')}' for p in g]
+    ])
+achievementSheetMain.clear()
+achievementSheetMain.update(rows, 'A1', value_input_option='USER_ENTERED')
+
+achievementSheetSub = masterSpread.worksheet("Achievements Sub")
+achievementDegreesSub = glob.glob('**/sub/*.png', root_dir=ACHIEVEMENT_TITLES_PATH, recursive=True)
+rows = []
+for k, g in groupby(achievementDegreesSub, lambda p: p.split(os.path.sep)[0]):
+    rows.append([
+        k[5:].replace('-', ' '),
+        *[f'{GITHUB_BASE_URL}/honor_baked/achievement/{p.replace(os.path.sep, '/')}' for p in g]
+    ])
+achievementSheetSub.clear()
+achievementSheetSub.update(rows, 'A1', value_input_option='USER_ENTERED')

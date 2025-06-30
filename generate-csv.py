@@ -1,7 +1,9 @@
 import csv
 import os
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+
 import config
 from model import Card, Music
 

@@ -132,3 +132,4 @@ sekai-master-db*
 *.sqlite
 output/
 api-key.json
+.assets/
