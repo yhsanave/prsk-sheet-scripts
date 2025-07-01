@@ -12,8 +12,8 @@ from data import update_data
 from model import Card, Music
 
 GITHUB_BASE_URL = r'https://raw.githubusercontent.com/yhsanave/prsk-sheet-assets/refs/heads/main'
-CR_TITLES_PATH = os.path.join('assets', 'honor_baked', 'character')
-ACHIEVEMENT_TITLES_PATH = os.path.join('assets', 'honor_baked', 'achievement')
+CR_TITLES_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'character')
+ACHIEVEMENT_TITLES_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'achievement')
 
 # Update Data
 update_data()

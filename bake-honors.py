@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 import config
+from data import update_data
 from model import Honor, HonorLevel, HonorRarity, HonorType
 
 DEGREE_MAIN_SIZE = (380, 80)
@@ -21,15 +22,15 @@ DEGREE_SUB_SIZE = (180, 80)
 HONOR_LEVEL_PIP_POS = [(50, 64), (66, 64), (82, 64), (98, 64), (114, 64), (50, 64), (66, 64), (82, 64), (98, 64), (114, 64)]
 FC_HONOR_LEVEL_STAR_POS = [(225, 60), (217, 46), (209, 32), (217, 18), (225, 4), (298, 60), (306, 46), (314, 32), (306, 18), (298, 4)]
 
-HONOR_PATH = os.path.join('assets', 'honor')
-RANK_LIVE_PATH = os.path.join('assets', 'rank_live', 'honor')
-FRAME_PATH = os.path.join('assets', 'frame')
-HONOR_FRAME_PATH = os.path.join('assets', 'honor_frame')
+HONOR_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor')
+RANK_LIVE_PATH = os.path.join(config.ASSETS_DIRECTORY, 'rank_live', 'honor')
+FRAME_PATH = os.path.join(config.ASSETS_DIRECTORY, 'frame')
+HONOR_FRAME_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor_frame')
 
 DEGREE_LV_0_PATH = os.path.join(FRAME_PATH, 'icon_degreeLv.png')
 DEGREE_LV_6_PATH = os.path.join(FRAME_PATH, 'icon_degreeLv6.png')
 
-BAKED_PATH = os.path.join('assets', 'honor_baked')
+BAKED_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor_baked')
 
 HONOR_REQUIREMENT_PATTERN = re.compile(r'.*?([\d,]+)')
 WORLD_LINK_ASSETBUNDLE_PATTERN = re.compile(r'.*(_cp\d)$')
@@ -124,8 +125,8 @@ class DegreeImage:
         if self.isSub:
             return im
         
-        slot = Image.open(os.path.join('assets', 'frame', 'icon_degreeStar_Transparent.png')).convert("LA")
-        star = Image.open(os.path.join('assets', 'frame', 'icon_degreeStar.png'))
+        slot = Image.open(os.path.join(config.ASSETS_DIRECTORY, 'frame', 'icon_degreeStar_Transparent.png')).convert("LA")
+        star = Image.open(os.path.join(config.ASSETS_DIRECTORY, 'frame', 'icon_degreeStar.png'))
         
         for pos in FC_HONOR_LEVEL_STAR_POS:
             im.paste(slot, pos, slot)
@@ -209,6 +210,9 @@ class DegreeImage:
 
 
 if __name__ == "__main__":
+    # Get latest data
+    update_data()
+
     # DB Setup
     engine = create_engine(config.DATABASE_STRING)
     Session = sessionmaker(bind=engine)
@@ -243,17 +247,17 @@ if __name__ == "__main__":
             i.get_degree_image().save(f)
 
     # Generate greyed out CR0 Titles
-    for i in track(glob.glob('**/CR005.png', root_dir=os.path.join('assets', 'honor_baked', 'character'), recursive=True), "Generating CR0 images...", transient=True):
-        im = Image.open(os.path.join('assets', 'honor_baked', 'character', i)).convert('LA')
-        im.save(os.path.join('assets', 'honor_baked', 'character',
+    for i in track(glob.glob('**/CR005.png', root_dir=os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'character'), recursive=True), "Generating CR0 images...", transient=True):
+        im = Image.open(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'character', i)).convert('LA')
+        im.save(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'character',
                 *i.split(os.path.sep)[:-1], 'CR000.png'))
 
     # Generate greyed out level 0 titles
-    achievements = glob.glob('**/*.png', root_dir=os.path.join('assets', 'honor_baked', 'achievement'), recursive=True)
+    achievements = glob.glob('**/*.png', root_dir=os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'achievement'), recursive=True)
     for k, g in track(groupby(achievements, lambda p: p.split(os.path.sep)[0:2]), "Generating LV0 images...", transient=True):
         i = next(g)
         if i.endswith(os.path.sep + '0000.png'):
             i = next(g)
-        im = Image.open(os.path.join('assets', 'honor_baked', 'achievement', i)).convert('LA')
-        im.save(os.path.join('assets', 'honor_baked', 'achievement',
+        im = Image.open(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'achievement', i)).convert('LA')
+        im.save(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'achievement',
                 *i.split(os.path.sep)[:-1], '0000.png'))

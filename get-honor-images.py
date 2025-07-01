@@ -7,6 +7,7 @@ from typing import List
 import requests
 from rich.progress import track
 
+import config
 
 def get_dirs(baseUrl: str, prefix: str, token: str = None) -> List[str]:
     '''Enumerates the given directory.'''
@@ -72,7 +73,7 @@ def get_paths(baseUrl: str, prefix: str, dirCachePath: str, pathCachePath: str) 
         paths = [d.strip('\n') for d in f.readlines()]
 
     newPaths = [p for p in paths if not os.path.exists(
-        os.path.join('assets', *p.split('/')))]
+        os.path.join(config.ASSETS_DIRECTORY, *p.split('/')))]
 
     return newPaths
 
@@ -99,9 +100,9 @@ def save_image(url: str, path: str) -> bool:
 def get_images(paths: List[str], tryEN: bool = True):
     '''Download a list of images.'''
     for path in track(paths, "Downloading images...", transient=True):
-        if not tryEN or not save_image(f'https://storage.sekai.best/sekai-en-assets/{path}', os.path.join('assets', *path.split('/'))):
+        if not tryEN or not save_image(f'https://storage.sekai.best/sekai-en-assets/{path}', os.path.join(config.ASSETS_DIRECTORY, *path.split('/'))):
             save_image(
-                f'https://storage.sekai.best/sekai-jp-assets/{path}', os.path.join('assets', *path.split('/')))
+                f'https://storage.sekai.best/sekai-jp-assets/{path}', os.path.join(config.ASSETS_DIRECTORY, *path.split('/')))
         sleep(.05)
 
 
