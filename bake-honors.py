@@ -18,8 +18,8 @@ from model import Honor, HonorLevel, HonorRarity, HonorType
 DEGREE_MAIN_SIZE = (380, 80)
 DEGREE_SUB_SIZE = (180, 80)
 
-HONOR_LEVEL_PIP_POS = [(50, 64) (66, 64) (82, 64) (98, 64) (114, 64) (50, 64) (66, 64) (82, 64) (98, 64) (114, 64)]
-FC_HONOR_LEVEL_STAR_POS = []
+HONOR_LEVEL_PIP_POS = [(50, 64), (66, 64), (82, 64), (98, 64), (114, 64), (50, 64), (66, 64), (82, 64), (98, 64), (114, 64)]
+FC_HONOR_LEVEL_STAR_POS = [(225, 60), (217, 46), (209, 32), (217, 18), (225, 4), (298, 60), (306, 46), (314, 32), (306, 18), (298, 4)]
 
 HONOR_PATH = os.path.join('assets', 'honor')
 RANK_LIVE_PATH = os.path.join('assets', 'rank_live', 'honor')
@@ -120,9 +120,19 @@ class DegreeImage:
 
     def get_level_stars(self) -> Image.Image:
         '''Returns the degree level stars. Used for full combo achievement honors.'''
-        # idk man i can't find the assets for the stars ¯\_(ツ)_/¯
-        im = Image.new(
-            "RGBA", DEGREE_SUB_SIZE if self.isSub else DEGREE_MAIN_SIZE)
+        im = Image.new("RGBA", DEGREE_SUB_SIZE if self.isSub else DEGREE_MAIN_SIZE)
+        if self.isSub:
+            return im
+        
+        slot = Image.open(os.path.join('assets', 'frame', 'icon_degreeStar_Transparent.png')).convert("LA")
+        star = Image.open(os.path.join('assets', 'frame', 'icon_degreeStar.png'))
+        
+        for pos in FC_HONOR_LEVEL_STAR_POS:
+            im.paste(slot, pos, slot)
+
+        for pos in FC_HONOR_LEVEL_STAR_POS[:((self.honorLevel.level-1) % 10)+1]:
+            im.paste(star, pos, star)
+
         return im
 
     def get_level_pips(self) -> Image.Image:
@@ -242,6 +252,8 @@ if __name__ == "__main__":
     achievements = glob.glob('**/*.png', root_dir=os.path.join('assets', 'honor_baked', 'achievement'), recursive=True)
     for k, g in track(groupby(achievements, lambda p: p.split(os.path.sep)[0:2]), "Generating LV0 images...", transient=True):
         i = next(g)
+        if i.endswith(os.path.sep + '0000.png'):
+            i = next(g)
         im = Image.open(os.path.join('assets', 'honor_baked', 'achievement', i)).convert('LA')
         im.save(os.path.join('assets', 'honor_baked', 'achievement',
                 *i.split(os.path.sep)[:-1], '0000.png'))
