@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from itertools import chain, groupby
 from pathlib import Path
+import shutil
 from typing import List
 
 from pathvalidate import sanitize_filename
@@ -222,6 +223,8 @@ if __name__ == "__main__":
     honors = session.execute(select(Honor)).scalars().all()
 
     # Generate Images
+    shutil.rmtree(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked'))
+    
     mainImages: List[DegreeImage] = []
     subImages: List[DegreeImage] = []
     for h in track(honors, "Getting degrees...", transient=True):
@@ -233,6 +236,7 @@ if __name__ == "__main__":
         for l in h.levels:
             mainImages.append(DegreeImage(h, l))
             subImages.append(DegreeImage(h, l, True))
+
 
     for i in track(mainImages, "Generating main images...", transient=True):
         path = i.get_save_path()
