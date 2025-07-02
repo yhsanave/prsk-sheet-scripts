@@ -4,7 +4,7 @@ A collection of scripts and tools for supporting my Project Sekai stat tracking 
 
 ## Setup
 
-Run [setup.sh](./setup.sh) to create and activate the virtual environment, install dependencies, and pull the necessary sub-repositories.
+Run [setup.ps1](./setup.ps1) to create and activate the virtual environment, install dependencies, and pull the necessary sub-repositories.
 
 Follow the instructions in the [gspread docs](https://docs.gspread.org/en/latest/oauth2.html#service-account) to set up a service account and save the `api-key.json` in the root folder.
 
