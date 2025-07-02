@@ -1,3 +1,4 @@
+import argparse
 import glob
 import os
 import re
@@ -12,6 +13,7 @@ from PIL import Image
 from rich.progress import track
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+from git import Repo
 
 import config
 from data import update_data
@@ -20,8 +22,10 @@ from model import Honor, HonorLevel, HonorRarity, HonorType
 DEGREE_MAIN_SIZE = (380, 80)
 DEGREE_SUB_SIZE = (180, 80)
 
-HONOR_LEVEL_PIP_POS = [(50, 64), (66, 64), (82, 64), (98, 64), (114, 64), (50, 64), (66, 64), (82, 64), (98, 64), (114, 64)]
-FC_HONOR_LEVEL_STAR_POS = [(225, 60), (217, 46), (209, 32), (217, 18), (225, 4), (298, 60), (306, 46), (314, 32), (306, 18), (298, 4)]
+HONOR_LEVEL_PIP_POS = [(50, 64), (66, 64), (82, 64), (98, 64), (114, 64),
+                       (50, 64), (66, 64), (82, 64), (98, 64), (114, 64)]
+FC_HONOR_LEVEL_STAR_POS = [(225, 60), (217, 46), (209, 32), (217, 18), (225, 4),
+                           (298, 60), (306, 46), (314, 32), (306, 18), (298, 4)]
 
 HONOR_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor')
 RANK_LIVE_PATH = os.path.join(config.ASSETS_DIRECTORY, 'rank_live', 'honor')
@@ -36,8 +40,10 @@ BAKED_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor_baked')
 HONOR_REQUIREMENT_PATTERN = re.compile(r'.*?([\d,]+)')
 WORLD_LINK_ASSETBUNDLE_PATTERN = re.compile(r'.*(_cp\d)$')
 
+
 def parse_req(description: str) -> str:
     return HONOR_REQUIREMENT_PATTERN.match(description).group(1).replace(',', '')
+
 
 @dataclass
 class DegreeImage:
@@ -111,7 +117,8 @@ class DegreeImage:
         if self.is_world_link():
             pos = (0, 0)
         elif self.honor.honorMissionType:
-            pos = ((im.width-rankImage.width)//2, 0) if self.isSub else (220, 0)
+            pos = ((im.width-rankImage.width)//2,
+                   0) if self.isSub else (220, 0)
         elif self.isSub:
             pos = ((im.width-rankImage.width)//2, 40)
         else:
@@ -122,13 +129,15 @@ class DegreeImage:
 
     def get_level_stars(self) -> Image.Image:
         '''Returns the degree level stars. Used for full combo achievement honors.'''
-        im = Image.new("RGBA", DEGREE_SUB_SIZE if self.isSub else DEGREE_MAIN_SIZE)
+        im = Image.new(
+            "RGBA", DEGREE_SUB_SIZE if self.isSub else DEGREE_MAIN_SIZE)
         if self.isSub:
             return im
-        
-        slot = Image.open(os.path.join(config.ASSETS_DIRECTORY, 'frame', 'icon_degreeStar_Transparent.png')).convert("LA")
-        star = Image.open(os.path.join(config.ASSETS_DIRECTORY, 'frame', 'icon_degreeStar.png'))
-        
+
+        slot = Image.open(os.path.join(
+            FRAME_PATH, 'icon_degreeStar_Transparent.png')).convert("LA")
+        star = Image.open(os.path.join(FRAME_PATH, 'icon_degreeStar.png'))
+
         for pos in FC_HONOR_LEVEL_STAR_POS:
             im.paste(slot, pos, slot)
 
@@ -211,8 +220,16 @@ class DegreeImage:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog='bake-honors',
+        description='Compiles the components of each honor into a single static image'
+    )
+    parser.add_argument('-nu', '--no-update', action='store_true', help='Skip updating the DB. Use this if you have already pulled the DB.')
+    args = vars(parser.parse_args())
+
     # Get latest data
-    update_data()
+    if not args.get('no_update'):
+        update_data()
 
     # DB Setup
     engine = create_engine(config.DATABASE_STRING)
@@ -223,8 +240,8 @@ if __name__ == "__main__":
     honors = session.execute(select(Honor)).scalars().all()
 
     # Generate Images
-    shutil.rmtree(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked'))
-    
+    shutil.rmtree(BAKED_PATH)
+
     mainImages: List[DegreeImage] = []
     subImages: List[DegreeImage] = []
     for h in track(honors, "Getting degrees...", transient=True):
@@ -236,7 +253,6 @@ if __name__ == "__main__":
         for l in h.levels:
             mainImages.append(DegreeImage(h, l))
             subImages.append(DegreeImage(h, l, True))
-
 
     for i in track(mainImages, "Generating main images...", transient=True):
         path = i.get_save_path()
@@ -251,17 +267,19 @@ if __name__ == "__main__":
             i.get_degree_image().save(f)
 
     # Generate greyed out CR0 Titles
-    for i in track(glob.glob('**/CR005.png', root_dir=os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'character'), recursive=True), "Generating CR0 images...", transient=True):
-        im = Image.open(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'character', i)).convert('LA')
-        im.save(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'character',
-                *i.split(os.path.sep)[:-1], 'CR000.png'))
+    for i in track(glob.glob('**/CR005.png', root_dir=os.path.join(BAKED_PATH, 'character'), recursive=True), "Generating CR0 images...", transient=True):
+        im = Image.open(os.path.join(BAKED_PATH, 'character', i)).convert('LA')
+        im.save(os.path.join(BAKED_PATH, 'character',
+                *i.split(os.sep)[:-1], 'CR000.png'))
 
     # Generate greyed out level 0 titles
-    achievements = glob.glob('**/*.png', root_dir=os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'achievement'), recursive=True)
-    for k, g in track(groupby(achievements, lambda p: p.split(os.path.sep)[0:2]), "Generating LV0 images...", transient=True):
+    achievements = glob.glob(
+        '**/*.png', root_dir=os.path.join(BAKED_PATH, 'achievement'), recursive=True)
+    for k, g in track(groupby(achievements, lambda p: p.split(os.sep)[0:2]), "Generating LV0 images...", transient=True):
         i = next(g)
-        if i.endswith(os.path.sep + '0000.png'):
+        if i.endswith(os.sep + '0000.png'):
             i = next(g)
-        im = Image.open(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'achievement', i)).convert('LA')
-        im.save(os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'achievement',
-                *i.split(os.path.sep)[:-1], '0000.png'))
+        im = Image.open(os.path.join(
+            BAKED_PATH, 'achievement', i)).convert('LA')
+        im.save(os.path.join(BAKED_PATH, 'achievement',
+                *i.split(os.sep)[:-1], '0000.png'))

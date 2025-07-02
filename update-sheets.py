@@ -1,3 +1,4 @@
+import argparse
 import glob
 import os
 from itertools import groupby
@@ -12,11 +13,22 @@ from data import update_data
 from model import Card, Music
 
 GITHUB_BASE_URL = r'https://raw.githubusercontent.com/yhsanave/prsk-sheet-assets/refs/heads/main'
-CR_TITLES_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'character')
-ACHIEVEMENT_TITLES_PATH = os.path.join(config.ASSETS_DIRECTORY, 'honor_baked', 'achievement')
+CR_TITLES_PATH = os.path.join(
+    config.ASSETS_DIRECTORY, 'honor_baked', 'character')
+ACHIEVEMENT_TITLES_PATH = os.path.join(
+    config.ASSETS_DIRECTORY, 'honor_baked', 'achievement')
 
-# Update Data
-update_data()
+parser = argparse.ArgumentParser(
+    prog='update-sheets',
+    description='Updates the master spreadsheet with the latest data.'
+)
+parser.add_argument('-nu', '--no-update', action='store_true',
+                    help='Skip updating the DB. Use this if you have already pulled the DB.')
+args = vars(parser.parse_args())
+
+# Get latest data
+if not args.get('no_update'):
+    update_data()
 
 # Database Setup
 engine = create_engine(config.DATABASE_STRING)
@@ -78,7 +90,8 @@ crTitleSheet.update(rows, 'A29', value_input_option='USER_ENTERED')
 # Achievement Titles
 print("Writing Achievement sheets...")
 achievementSheetMain = masterSpread.worksheet("Achievements Main")
-achievementDegreesMain = glob.glob('**/main/*.png', root_dir=ACHIEVEMENT_TITLES_PATH, recursive=True)
+achievementDegreesMain = glob.glob(
+    '**/main/*.png', root_dir=ACHIEVEMENT_TITLES_PATH, recursive=True)
 rows = []
 for k, g in groupby(achievementDegreesMain, lambda p: p.split(os.path.sep)[0]):
     rows.append([
@@ -89,7 +102,8 @@ achievementSheetMain.clear()
 achievementSheetMain.update(rows, 'A1', value_input_option='USER_ENTERED')
 
 achievementSheetSub = masterSpread.worksheet("Achievements Sub")
-achievementDegreesSub = glob.glob('**/sub/*.png', root_dir=ACHIEVEMENT_TITLES_PATH, recursive=True)
+achievementDegreesSub = glob.glob(
+    '**/sub/*.png', root_dir=ACHIEVEMENT_TITLES_PATH, recursive=True)
 rows = []
 for k, g in groupby(achievementDegreesSub, lambda p: p.split(os.path.sep)[0]):
     rows.append([
