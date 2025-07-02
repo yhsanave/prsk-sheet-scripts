@@ -2,15 +2,29 @@ import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from time import sleep
-from typing import List
+from typing import List, Tuple
 
 import requests
-from rich.progress import track
+import sqlalchemy.orm
+from rich.progress import (BarColumn, MofNCompleteColumn, Progress, TaskID,
+                           TextColumn, TimeElapsedColumn, TimeRemainingColumn)
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session, sessionmaker
 
 import config
+from model import HonorDirectory, HonorDirectoryType, HonorFile
 
-def get_dirs(baseUrl: str, prefix: str, token: str = None) -> List[str]:
+
+def get_dirs(baseUrl: str, prefix: str, cachedDirs: List[str] = [], token: str = None, prog: Progress = None, progTask: TaskID = None, isContinue: bool = False) -> Tuple[List[str], List[str]]:
     '''Enumerates the given directory.'''
+    if prefix in cachedDirs:
+        if prog:
+            prog.advance(progTask)
+
+        return [], []
+
+    if prog:
+        prog.update(progTask, path=prefix)
 
     res = requests.get(
         url=baseUrl,
@@ -20,68 +34,74 @@ def get_dirs(baseUrl: str, prefix: str, token: str = None) -> List[str]:
             "list-type": "2",
             "prefix": prefix,
         })
+    sleep(.005)
 
     if not res.ok:
         print(res)
-        return []
+        return [], []
 
     root = ET.fromstring(res.text)
     namespace = f'{root.tag.split('}')[0]}}}'
     token = root.findtext(f"{namespace}NextContinuationToken")
 
-    items = []
     # Get directories
+    dirs = []
     for item in root.findall(f"{namespace}CommonPrefixes/{namespace}Prefix"):
-        items.append(item.text)
+        if item.text not in cachedDirs:
+            dirs.append(item.text)
+
+    if prog:
+        prog.update(progTask, total=prog.tasks[0].total + len(dirs))
 
     # Get files
+    files = []
     for item in root.findall(f"{namespace}Contents/{namespace}Key"):
-        items.append(item.text)
+        files.append(item.text)
 
+    # Get remaining if truncated
     if root.findtext(f"{namespace}IsTruncated") == "true":
-        items.extend(get_dirs(baseUrl, prefix, token))
+        next = get_dirs(baseUrl, prefix, cachedDirs=cachedDirs,
+                        token=token, prog=prog, progTask=progTask, isContinue=True)
+        dirs.extend(next[0])
+        files.extend(next[1])
 
-    return items
+    if isContinue:
+        return dirs, files
 
+    # Expand subdirectories
+    hasDirs = len(dirs) > 0
+    while hasDirs:
+        subdirs = []
+        subfiles = []
+        expanded = []
 
-def get_paths(baseUrl: str, prefix: str, dirCachePath: str, pathCachePath: str) -> List[str]:
-    '''Get all the paths to files in a given directory that aren't already in ./assets. Only goes one subdirectory deep currently.'''
+        for dir in dirs:
+            sub = get_dirs(baseUrl, dir, cachedDirs=cachedDirs,
+                           prog=prog, progTask=progTask)
+            subdirs.extend(sub[0])
+            subfiles.extend(sub[1])
 
-    if os.path.exists(os.path.join('output', dirCachePath)):
-        with open(os.path.join('output', dirCachePath), 'r') as f:
-            cachedDirs = [d.strip('\n') for d in f.readlines()]
-    else:
-        cachedDirs = []
+            if len(subdirs) > 0:
+                expanded.append(dir)
 
-    dirs = get_dirs(baseUrl, prefix)
+        for dir in expanded:
+            dirs.remove(dir)
 
-    with open(os.path.join('output', dirCachePath), 'w') as f:
-        f.writelines(f'{d}\n' for d in dirs)
+        dirs.extend(subdirs)
+        files.extend(subfiles)
+        hasDirs = len(subdirs) > 0
 
-    newDirs = [d for d in dirs if d not in cachedDirs]
+    if prog:
+        prog.advance(progTask)
 
-    paths: List[str] = []
-
-    for dir in track(newDirs, "Getting paths...", transient=True):
-        paths.extend(get_dirs(baseUrl, dir))
-        sleep(.005)
-
-    with open(os.path.join('output', pathCachePath), 'a') as f:
-        f.writelines(f'{p}\n' for p in paths)
-
-    with open(os.path.join('output', pathCachePath), 'r') as f:
-        paths = [d.strip('\n') for d in f.readlines()]
-
-    newPaths = [p for p in paths if not os.path.exists(
-        os.path.join(config.ASSETS_DIRECTORY, *p.split('/')))]
-
-    return newPaths
+    return dirs, files
 
 
 def save_image(url: str, path: str) -> bool:
     '''Download and write image file.'''
-    
+
     response = requests.get(url, stream=True)
+    sleep(.05)
     if not response.ok:
         print(url, response)
         return False
@@ -97,30 +117,136 @@ def save_image(url: str, path: str) -> bool:
         return True
 
 
-def get_images(paths: List[str], tryEN: bool = True):
-    '''Download a list of images.'''
-    for path in track(paths, "Downloading images...", transient=True):
-        if not tryEN or not save_image(f'https://storage.sekai.best/sekai-en-assets/{path}', os.path.join(config.ASSETS_DIRECTORY, *path.split('/'))):
-            save_image(
-                f'https://storage.sekai.best/sekai-jp-assets/{path}', os.path.join(config.ASSETS_DIRECTORY, *path.split('/')))
-        sleep(.05)
+def get_honors(session: sqlalchemy.orm.Session, prefix: str, honorType: HonorDirectoryType):
+    """Gets new honor directories and caches them in the DB"""
+
+    cachedDirs = session.execute(select(HonorDirectory.directory).where(
+        HonorDirectory.availableEN == True)).scalars().all()
+    with Progress(
+            TextColumn('{task.description}'),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            TimeRemainingColumn(),
+            TextColumn('{task.fields[path]}'),
+            transient=True
+    ) as prog:
+        task = prog.add_task('Getting EN Directories', total=0, path='')
+        enHonorDirs, enHonorFiles = get_dirs(
+            'https://storage.sekai.best/sekai-en-assets/', prefix, cachedDirs, prog=prog, progTask=task)
+
+    honorDirs = []
+    for dir in enHonorDirs:
+        honorDirs.append(HonorDirectory(
+            directory=dir,
+            availableEN=True,
+            dirType=honorType.value
+        ))
+    session.add_all(honorDirs)
+    session.commit()
+
+    cachedDirs = session.execute(
+        select(HonorDirectory.directory)).scalars().all()
+    with Progress(
+        TextColumn('{task.description}'),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        TextColumn('{task.fields[path]}'),
+        transient=True
+    ) as prog:
+        task = prog.add_task('Getting JP Directories', total=0, path='')
+        jpHonorDirs, jpHonorFiles = get_dirs(
+            'https://storage.sekai.best/sekai-jp-assets/', prefix, cachedDirs, prog=prog, progTask=task)
+
+    honorDirs = []
+    for dir in filter(lambda d: d not in enHonorDirs, jpHonorDirs):
+        honorDirs.append(HonorDirectory(
+            directory=dir,
+            availableEN=False,
+            dirType=honorType.value
+        ))
+    session.add_all(honorDirs)
+    session.commit()
+
+    # Get Files
+    honorFiles = []
+    for file in enHonorFiles:
+        honorFiles.append(HonorFile(
+            filename=file.split('/')[-1],
+            directoryId=file[:file.rfind('/')+1],
+            downloadedEN=False
+        ))
+    for file in filter(lambda d: d not in enHonorFiles, jpHonorFiles):
+        honorFiles.append(HonorFile(
+            filename=file.split('/')[-1],
+            directoryId=file[:file.rfind('/')+1],
+            downloadedEN=False
+        ))
+    session.add_all(honorFiles)
+    session.commit()
 
 
 if __name__ == "__main__":
-    # Get honors
-    paths = get_paths('https://storage.sekai.best/sekai-jp-assets/',
-                      'honor/', 'honorDirsCache.txt', 'honorPathsCache.txt')
-    print(f'Found {len(paths)} honors to download...')
-    get_images(paths)
+    # DB Setup
+    engine = create_engine(config.DATABASE_STRING)
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
-    # Get honor_frames
-    paths = get_paths('https://storage.sekai.best/sekai-jp-assets/',
-                      'honor_frame/', 'honorFrameDirsCache.txt', 'honorFramePathsCache.txt')
-    print(f'Found {len(paths)} honor frames to download...')
-    get_images(paths, False)
+    # Get Directories
+    get_honors(session, 'honor/', HonorDirectoryType.HONOR)
+    get_honors(session, 'honor_frame/', HonorDirectoryType.HONOR_FRAME)
+    get_honors(session, 'rank_live/honor/', HonorDirectoryType.RANK_LIVE)
 
-    # Get rank_live honors
-    paths = get_paths('https://storage.sekai.best/sekai-jp-assets/',
-                      'rank_live/honor/', 'rankedHonorDirsCache.txt', 'rankedHonorPathsCache.txt')
-    print(f'Found {len(paths)} ranked honors to download...')
-    get_images(paths, False)
+    # Download images
+    with Progress(
+        TextColumn('{task.description}'),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        TextColumn('{task.fields[path]}'),
+        transient=True
+    ) as prog:
+        newENFiles = [f for f in session.execute(
+            select(
+                HonorFile
+            ).join(
+                HonorDirectory
+            ).where(
+                HonorDirectory.availableEN == True
+            )
+        ).scalars().all() if not f.downloadedEN or not os.path.exists(f.get_path())]
+
+        task = prog.add_task(
+            'Downloading EN images',
+            total=len(newENFiles),
+            path=''
+        )
+        for f in newENFiles:
+            prog.update(task, path=f.get_path())
+            if save_image(f.get_url(), f.get_path()):
+                f.downloadedEN = True
+                session.commit()
+            prog.advance(task)
+
+        newJPFiles = [f for f in session.execute(
+            select(
+                HonorFile
+            ).join(
+                HonorDirectory
+            ).where(
+                HonorFile.directory
+            )
+        ).scalars().all() if not os.path.exists(f.get_path())]
+
+        task = prog.add_task(
+            'Downloading JP images',
+            total=len(newJPFiles),
+            path=''
+        )
+        for f in newJPFiles:
+            prog.update(task, path=f.get_path())
+            save_image(f.get_url(), f.get_path())
+            prog.advance(task)

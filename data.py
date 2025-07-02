@@ -47,7 +47,7 @@ def fetch_data():
 def import_data():
     """Parse the data from the repository and insert it into the database."""
     engine = create_engine(config.DATABASE_STRING)
-    Base.metadata.drop_all(engine)
+    Base.metadata.drop_all(engine, [Base.metadata.tables[t] for t in Base.metadata.tables if t.startswith('data_')])
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()

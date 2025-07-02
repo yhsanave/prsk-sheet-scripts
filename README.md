@@ -29,9 +29,7 @@ In-game, this allows common assets to be reused and combined efficiently, but th
 
 Included in this repo are scripts for "baking" the titles into static images containing all of the component parts to be more easily used in these contexts.
 
-To generate these images, first run [get-honor-images.py](./get-honor-images.py) to pull the degree images from [sekai.best](https://sekai.best). This will take a while the first time as it has to make a lot of requests to get the full list of available files and then download them all, but the directory will be cached in the [output](./output/) folder, so future runs will be faster and will only download new images.
-
-Currently, there is no handling for new EN images previously downloaded from JP, so you will have to delete the JP images from [prsk-sheet-assets/honor](./prsk-sheet-assets/honor/) to get it to download again. Proper handling for that will come in a future update.
+To generate these images, first run [get-honor-images.py](./get-honor-images.py) to pull the degree images from [sekai.best](https://sekai.best). This will take a while the first time as it has to make a lot of requests to get the full list of available files and then download them all, but the directory will be cached in the database, so future runs will be faster and will only download new images.
 
 Once you have pulled the images, run [bake-honors.py](./bake-honors.py) to generate the baked images. These will be saved in [prsk-sheet-assets/honor_baked](./prsk-sheet-assets/honor_baked/) using the folder structure below. Note that `Title-Name` generally refers to the text on the title, with spaces replaced by dashes.
 

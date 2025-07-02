@@ -133,3 +133,4 @@ sekai-master-db*
 output/
 api-key.json
 assets/
+.vscode/

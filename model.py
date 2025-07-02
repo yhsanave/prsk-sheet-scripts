@@ -1,9 +1,12 @@
 import datetime
 from enum import Enum
+import os
 from typing import Dict, List, Optional
 
 from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+import config
 
 
 class Base(DeclarativeBase):
@@ -120,6 +123,14 @@ class MusicTags(Enum):
         }.get(self.value)
 
 
+class HonorDirectoryType(Enum):
+    HONOR = 'honor'
+    HONOR_FRAME = 'honor_frame'
+    RANK_LIVE = 'rank_live'
+
+    def __str__(self):
+        return self.value.title()
+
 # Event Priority Constants
 RARITY_EVENT_PRIORITY = [Rarity.FOUR, Rarity.BIRTHDAY,
                          Rarity.THREE, Rarity.TWO, Rarity.ONE]
@@ -135,7 +146,7 @@ EVENT_PRIORITY_TEXT_MAP = [
 
 
 class Unit(Base):
-    __tablename__ = 'units'
+    __tablename__ = 'data_units'
 
     unit: Mapped[str] = mapped_column(String(14), primary_key=True)
     seq: Mapped[int] = mapped_column(Integer)
@@ -146,18 +157,18 @@ class Unit(Base):
 
 
 class GameCharacter(Base):
-    __tablename__ = 'gameCharacters'
+    __tablename__ = 'data_gameCharacters'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     firstName: Mapped[Optional[str]] = mapped_column(String(30))
     givenName: Mapped[str] = mapped_column(String(30))
     gender: Mapped[str] = mapped_column(String(30))
-    unitId: Mapped[str] = mapped_column(ForeignKey("units.unit"))
+    unitId: Mapped[str] = mapped_column(ForeignKey('data_units.unit'))
     unit: Mapped["Unit"] = relationship(back_populates='characters')
 
 
 class Skill(Base):
-    __tablename__ = 'skills'
+    __tablename__ = 'data_skills'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     skillType: Mapped[SkillType] = mapped_column(Integer)
@@ -191,7 +202,7 @@ class Skill(Base):
 
 
 class CardSupply(Base):
-    __tablename__ = 'cardSupplies'
+    __tablename__ = 'data_cardSupplies'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     cardSupplyType: Mapped[str] = mapped_column(String(30))
@@ -212,23 +223,23 @@ class CardSupply(Base):
 
 
 class Card(Base):
-    __tablename__ = 'cards'
+    __tablename__ = 'data_cards'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     seq: Mapped[int] = mapped_column(Integer)
     prefix: Mapped[str] = mapped_column(String(100))
-    characterId: Mapped[int] = mapped_column(ForeignKey("gameCharacters.id"))
+    characterId: Mapped[int] = mapped_column(ForeignKey('data_gameCharacters.id'))
     character: Mapped["GameCharacter"] = relationship()
     cardRarityType: Mapped[Rarity] = mapped_column(String(15))
     attribute: Mapped[Attributes] = mapped_column(String(10))
     supportUnitId: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("units.unit"))
+        ForeignKey('data_units.unit'))
     supportUnit: Mapped[Optional["Unit"]] = relationship()
-    skillId: Mapped[int] = mapped_column(ForeignKey("skills.id"))
+    skillId: Mapped[int] = mapped_column(ForeignKey('data_skills.id'))
     skill: Mapped["Skill"] = relationship()
     releaseAt: Mapped[Date] = mapped_column(Date)
     assetBundleName: Mapped[str] = mapped_column(String(12))
-    cardSupplyId: Mapped[int] = mapped_column(ForeignKey('cardSupplies.id'))
+    cardSupplyId: Mapped[int] = mapped_column(ForeignKey('data_cardSupplies.id'))
     cardSupply: Mapped["CardSupply"] = relationship()
     availableEN: Mapped[bool] = mapped_column(Boolean)
     sideStories: Mapped[List["CardEpisode"]] = relationship()
@@ -281,15 +292,15 @@ class Card(Base):
 
 
 class CardEpisode(Base):
-    __tablename__ = 'cardEpisodes'
+    __tablename__ = 'data_cardEpisodes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     seq: Mapped[int] = mapped_column(Integer)
-    cardId: Mapped[int] = mapped_column(ForeignKey('cards.id'))
+    cardId: Mapped[int] = mapped_column(ForeignKey('data_cards.id'))
 
 
 class MusicArtist(Base):
-    __tablename__ = 'musicArtists'
+    __tablename__ = 'data_musicArtists'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
@@ -299,10 +310,10 @@ class MusicArtist(Base):
 
 
 class MusicTag(Base):
-    __tablename__ = 'musicTags'
+    __tablename__ = 'data_musicTags'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    musicId: Mapped[int] = mapped_column(ForeignKey('musics.id'))
+    musicId: Mapped[int] = mapped_column(ForeignKey('data_musics.id'))
     musicTag: Mapped[MusicTags] = mapped_column(String(20))
     seq: Mapped[int] = mapped_column(Integer)
 
@@ -311,15 +322,15 @@ class MusicTag(Base):
 
 
 class MusicOriginal(Base):
-    __tablename__ = 'musicOriginals'
+    __tablename__ = 'data_musicOriginals'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    musicId: Mapped[int] = mapped_column(ForeignKey('musics.id'))
+    musicId: Mapped[int] = mapped_column(ForeignKey('data_musics.id'))
     videoLink: Mapped[str] = mapped_column(String(100))
 
 
 class Music(Base):
-    __tablename__ = 'musics'
+    __tablename__ = 'data_musics'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     seq: Mapped[int] = mapped_column(Integer)
@@ -331,7 +342,7 @@ class Music(Base):
     availableEN: Mapped[bool] = mapped_column(Boolean)
 
     creatorArtistId: Mapped[Optional[int]] = mapped_column(
-        ForeignKey('musicArtists.id'))
+        ForeignKey('data_musicArtists.id'))
     creatorArtist: Mapped[Optional["MusicArtist"]] = relationship()
     lyricist: Mapped[str] = mapped_column(String(100))
     composer: Mapped[str] = mapped_column(String(100))
@@ -426,10 +437,10 @@ class Music(Base):
 
 
 class MusicDifficulty(Base):
-    __tablename__ = 'musicDifficulties'
+    __tablename__ = 'data_musicDifficulties'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    music: Mapped["Music"] = mapped_column(ForeignKey('musics.id'))
+    music: Mapped["Music"] = mapped_column(ForeignKey('data_musics.id'))
     difficulty: Mapped[Difficulty] = mapped_column(String(20))
     playLevel: Mapped[int] = mapped_column(Integer)
     totalNoteCount: Mapped[int] = mapped_column(Integer)
@@ -439,7 +450,7 @@ class MusicDifficulty(Base):
 
 
 class Gacha(Base):
-    __tablename__ = 'gachas'
+    __tablename__ = 'data_gachas'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     gachaType: Mapped[str] = mapped_column(String(10))
@@ -455,11 +466,11 @@ class Gacha(Base):
 
 
 class GachaDetail(Base):
-    __tablename__ = 'gachaDetails'
+    __tablename__ = 'data_gachaDetails'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    gacha: Mapped[Gacha] = mapped_column(ForeignKey('gachas.id'))
-    card: Mapped[Card] = mapped_column(ForeignKey('cards.id'))
+    gacha: Mapped[Gacha] = mapped_column(ForeignKey('data_gachas.id'))
+    card: Mapped[Card] = mapped_column(ForeignKey('data_cards.id'))
     weight: Mapped[int] = mapped_column(Integer)
     isWish: Mapped[bool] = mapped_column(Boolean)
 
@@ -468,11 +479,11 @@ class GachaDetail(Base):
 
 
 class GachaPickup(Base):
-    __tablename__ = 'gachaPickups'
+    __tablename__ = 'data_gachaPickups'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    gacha: Mapped["Gacha"] = mapped_column(ForeignKey('gachas.id'))
-    card: Mapped["Card"] = mapped_column(ForeignKey('cards.id'))
+    gacha: Mapped["Gacha"] = mapped_column(ForeignKey('data_gachas.id'))
+    card: Mapped["Card"] = mapped_column(ForeignKey('data_cards.id'))
     gachaPickupType: Mapped[str] = mapped_column(String(20))
 
     def __hash__(self):
@@ -480,10 +491,10 @@ class GachaPickup(Base):
 
 
 class HonorLevel(Base):
-    __tablename__ = 'honorLevels'
+    __tablename__ = 'data_honorLevels'
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    honorId: Mapped[int] = mapped_column(ForeignKey('honors.id'))
+    honorId: Mapped[int] = mapped_column(ForeignKey('data_honors.id'))
     level: Mapped[int] = mapped_column(Integer)
     bonus: Mapped[int] = mapped_column(Integer)
     description: Mapped[str] = mapped_column(String(200))
@@ -492,7 +503,7 @@ class HonorLevel(Base):
 
 
 class HonorGroup(Base):
-    __tablename__ = 'honorGroups'
+    __tablename__ = 'data_honorGroups'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
@@ -505,11 +516,11 @@ class HonorGroup(Base):
 
 
 class Honor(Base):
-    __tablename__ = 'honors'
+    __tablename__ = 'data_honors'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     seq: Mapped[int] = mapped_column(Integer)
-    groupId: Mapped[int] = mapped_column(ForeignKey('honorGroups.id'))
+    groupId: Mapped[int] = mapped_column(ForeignKey('data_honorGroups.id'))
     group: Mapped[HonorGroup] = relationship(back_populates='honors')
     honorRarity: Mapped[Optional[HonorRarity]] = mapped_column(String(7))
     name: Mapped[str] = mapped_column(String(100))
@@ -518,3 +529,27 @@ class Honor(Base):
                              ] = mapped_column(String(20))
 
     levels: Mapped[List[HonorLevel]] = relationship()
+
+
+class HonorDirectory(Base):
+    __tablename__ = 'sb_honorDirectory'
+
+    directory: Mapped[str] = mapped_column(String(200), primary_key=True)
+    availableEN: Mapped[bool] = mapped_column(Boolean)
+    dirType: Mapped[HonorDirectoryType] = mapped_column(String(11))
+    files: Mapped[List["HonorFile"]] = relationship(back_populates='directory')
+
+class HonorFile(Base):
+    __tablename__ = 'sb_honorPath'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    filename: Mapped[str] = mapped_column(String(100))
+    directoryId: Mapped[str] = mapped_column(ForeignKey('sb_honorDirectory.directory'))
+    directory: Mapped[HonorDirectory] = relationship(back_populates='files')
+    downloadedEN: Mapped[bool] = mapped_column(Boolean)
+
+    def get_path(self) -> str:
+        return os.path.join(config.ASSETS_DIRECTORY, *self.directory.directory.split('/'), self.filename)
+
+    def get_url(self) -> str:
+        return f'https://storage.sekai.best/sekai-{"en" if self.directory.availableEN else "jp"}-assets/{self.directory.directory}{self.filename}'
