@@ -83,7 +83,7 @@ class DegreeImage:
             self.honor.honorRarity)
         rarityLv = [HonorRarity.LOW, HonorRarity.MIDDLE,
                     HonorRarity.HIGH, HonorRarity.HIGHEST].index(rarity)+1
-        filename = f'frame_degree_{'s' if self.isSub else 'm'}_{rarityLv}.png'
+        filename = f'frame_degree_{"s" if self.isSub else "m"}_{rarityLv}.png'
 
         if rarityLv > 2 and self.honor.group.frameName:
             path = os.path.join(

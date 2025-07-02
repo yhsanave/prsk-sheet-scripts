@@ -73,7 +73,7 @@ rows = []
 for k, g in groupby(crDegrees, lambda p: p.split(os.path.sep)[0]):
     rows.append([
         k[3:].replace('-', ' '),
-        *[f'{GITHUB_BASE_URL}/honor_baked/character/{p.replace(os.path.sep, '/')}' for p in g]
+        *[f'{GITHUB_BASE_URL}/honor_baked/character/{p.replace(os.path.sep, "/")}' for p in g]
     ])
 crTitleSheet.update(rows, 'A2', value_input_option='USER_ENTERED')
 
@@ -83,7 +83,7 @@ rows = []
 for k, g in groupby(crDegrees, lambda p: p.split(os.path.sep)[0]):
     rows.append([
         k[3:].replace('-', ' '),
-        *[f'{GITHUB_BASE_URL}/honor_baked/character/{p.replace(os.path.sep, '/')}' for p in g]
+        *[f'{GITHUB_BASE_URL}/honor_baked/character/{p.replace(os.path.sep, "/")}' for p in g]
     ])
 crTitleSheet.update(rows, 'A29', value_input_option='USER_ENTERED')
 
@@ -96,7 +96,7 @@ rows = []
 for k, g in groupby(achievementDegreesMain, lambda p: p.split(os.path.sep)[0]):
     rows.append([
         k[5:].replace('-', ' '),
-        *[f'{GITHUB_BASE_URL}/honor_baked/achievement/{p.replace(os.path.sep, '/')}' for p in g]
+        *[f'{GITHUB_BASE_URL}/honor_baked/achievement/{p.replace(os.path.sep, "/")}' for p in g]
     ])
 achievementSheetMain.clear()
 achievementSheetMain.update(rows, 'A1', value_input_option='USER_ENTERED')
@@ -108,7 +108,7 @@ rows = []
 for k, g in groupby(achievementDegreesSub, lambda p: p.split(os.path.sep)[0]):
     rows.append([
         k[5:].replace('-', ' '),
-        *[f'{GITHUB_BASE_URL}/honor_baked/achievement/{p.replace(os.path.sep, '/')}' for p in g]
+        *[f'{GITHUB_BASE_URL}/honor_baked/achievement/{p.replace(os.path.sep, "/")}' for p in g]
     ])
 achievementSheetSub.clear()
 achievementSheetSub.update(rows, 'A1', value_input_option='USER_ENTERED')

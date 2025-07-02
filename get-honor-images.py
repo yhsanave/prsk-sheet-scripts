@@ -41,7 +41,7 @@ def get_dirs(baseUrl: str, prefix: str, cachedDirs: List[str] = [], token: str =
         return [], []
 
     root = ET.fromstring(res.text)
-    namespace = f'{root.tag.split('}')[0]}}}'
+    namespace = f'{root.tag.split("}")[0]}}}'
     token = root.findtext(f"{namespace}NextContinuationToken")
 
     # Get directories
