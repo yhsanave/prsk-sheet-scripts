@@ -83,6 +83,7 @@ class HonorType(Enum):
     CHARACTER = "character"
     EVENT = "event"
     RANK_MATCH = "rank_match"
+    BIRTHDAY = "birthday"
 
     def __str__(self):
         return self.value.title()
