@@ -101,7 +101,7 @@ def save_image(url: str, path: str) -> bool:
     '''Download and write image file.'''
 
     response = requests.get(url, stream=True)
-    sleep(.05)
+    sleep(.1)
     if not response.ok:
         print(url, response)
         return False
@@ -137,12 +137,11 @@ def get_honors(session: sqlalchemy.orm.Session, prefix: str, honorType: HonorDir
 
     honorDirs = []
     for dir in enHonorDirs:
-        honorDirs.append(HonorDirectory(
+        session.merge(HonorDirectory(
             directory=dir,
             availableEN=True,
             dirType=honorType.value
         ))
-    session.add_all(honorDirs)
     session.commit()
 
     cachedDirs = session.execute(
