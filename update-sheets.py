@@ -62,6 +62,16 @@ musicSheet.clear()
 musicSheet.update([musicHeaders], 'A1')
 musicSheet.update(musicRows, 'A2')
 
+print('Writing Musics Fixed sheet...')
+musicFixedSheet = masterSpread.worksheet('Musics Fixed')
+musicFixedSheet.clear()
+musicFixedSheet.update([musicHeaders], 'A1')
+# To avoid desyncing data when new songs are inserted between existing IDs, leave gaps in the sheet
+musicFixedRows = [[] for _ in range(musicRows[-1][0])]
+for row in musicRows:
+    musicFixedRows[row[0]-1] = row
+musicFixedSheet.update(musicFixedRows, 'A2')
+
 # CR Titles
 print("Writing CR Titles sheet...")
 crTitleSheet = masterSpread.worksheet("CR Titles")
