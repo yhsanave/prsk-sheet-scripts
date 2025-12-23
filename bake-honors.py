@@ -255,16 +255,22 @@ if __name__ == "__main__":
             subImages.append(DegreeImage(h, l, True))
 
     for i in track(mainImages, "Generating main images...", transient=True):
-        path = i.get_save_path()
-        Path(*path.split(os.sep)[:-1]).mkdir(parents=True, exist_ok=True)
-        with open(path, 'wb') as f:
-            i.get_degree_image().save(f)
+        try:
+            path = i.get_save_path()
+            Path(*path.split(os.sep)[:-1]).mkdir(parents=True, exist_ok=True)
+            with open(path, 'wb') as f:
+                i.get_degree_image().save(f)
+        except Exception as e:
+            print(e)
 
     for i in track(subImages, "Generating sub images...", transient=True):
-        path = i.get_save_path()
-        Path(*path.split(os.sep)[:-1]).mkdir(parents=True, exist_ok=True)
-        with open(path, 'wb') as f:
-            i.get_degree_image().save(f)
+        try:
+            path = i.get_save_path()
+            Path(*path.split(os.sep)[:-1]).mkdir(parents=True, exist_ok=True)
+            with open(path, 'wb') as f:
+                i.get_degree_image().save(f)
+        except Exception as e:
+            print(e)
 
     # Generate greyed out CR0 Titles
     for i in track(glob.glob('**/CR005.png', root_dir=os.path.join(BAKED_PATH, 'character'), recursive=True), "Generating CR0 images...", transient=True):
