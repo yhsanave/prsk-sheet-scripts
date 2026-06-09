@@ -13,6 +13,7 @@ class Base(DeclarativeBase):
     pass
 
 
+# Enums
 class Attributes(Enum):
     COOL = "cool"
     CUTE = "cute"
@@ -31,14 +32,14 @@ class Rarity(Enum):
     FOUR = "rarity_4"
     BIRTHDAY = "rarity_birthday"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return {
             Rarity.ONE.value: '1',
             Rarity.TWO.value: '2',
             Rarity.THREE.value: '3',
             Rarity.FOUR.value: '4',
             Rarity.BIRTHDAY.value: 'BD',
-        }.get(self.value)
+        }.get(self.value, '')
 
 
 class SkillType(Enum):
@@ -121,7 +122,7 @@ class MusicTags(Enum):
             MusicTags.WONDERLANDS_SHOWTIME.value: "Wonderlands×Showtime",
             MusicTags.NIGHTCORD.value: "Nightcord at 25:00",
             MusicTags.OTHER.value: "Other",
-        }.get(self.value)
+        }.get(self.value, '')
 
 
 class HonorDirectoryType(Enum):
@@ -131,6 +132,17 @@ class HonorDirectoryType(Enum):
 
     def __str__(self):
         return self.value.title()
+
+
+class MySekaiCharacterTalkConditionType(Enum):
+    PHENOMENA = 'mysekai_phenomena_id'
+    VISIT_COUNT = 'mysekai_character_visit_count'
+    EVENT_STORY = 'read_event_story_episode_id'
+    FIXTURE = 'mysekai_fixture_id'
+
+    def __str__(self) -> str:
+        return self.name.replace('_', ' ').title()
+
 
 # Event Priority Constants
 RARITY_EVENT_PRIORITY = [Rarity.FOUR, Rarity.BIRTHDAY,
@@ -168,6 +180,24 @@ class GameCharacter(Base):
     unit: Mapped["Unit"] = relationship(back_populates='characters')
 
 
+class GameCharacterUnit(Base):
+    __tablename__ = 'data_gameCharacterUnits'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    gameCharacterId: Mapped[int] = mapped_column(
+        ForeignKey('data_gameCharacters.id'))
+    unitName: Mapped[str] = mapped_column(ForeignKey('data_units.unitName'))
+    colorCode: Mapped[str] = mapped_column(String(7))
+    skinColorCode: Mapped[str] = mapped_column(String(7))
+    skinShadowColorCode1: Mapped[str] = mapped_column(String(7))
+    skinShadowColorCode2: Mapped[str] = mapped_column(String(7))
+
+    gameCharacter: Mapped[GameCharacter] = relationship()
+    unit: Mapped[Unit] = relationship()
+
+# Cards
+
+
 class Skill(Base):
     __tablename__ = 'data_skills'
 
@@ -177,7 +207,7 @@ class Skill(Base):
     def __hash__(self):
         return self.id
 
-    def parse_skill_type(s: Dict) -> SkillType:
+    def parse_skill_type(s: Dict) -> SkillType:  # type: ignore
         effects: List[Dict] = s["skillEffects"]
 
         if s["skillFilterId"] == 1:
@@ -195,7 +225,7 @@ class Skill(Base):
         elif effects[0]["activateNotesJudgmentType"] == "perfect":
             return SkillType.PERFECT_SCORER
 
-        enhance: Dict = effects[0].get("skillEnhance", None)
+        enhance: Dict = effects[0].get("skillEnhance", None)  # type: ignore
         if enhance is not None and enhance.get("skillEnhanceType", None) == "sub_unit_score_up":
             return SkillType.UNIT_SCORER
 
@@ -229,7 +259,8 @@ class Card(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     seq: Mapped[int] = mapped_column(Integer)
     prefix: Mapped[str] = mapped_column(String(100))
-    characterId: Mapped[int] = mapped_column(ForeignKey('data_gameCharacters.id'))
+    characterId: Mapped[int] = mapped_column(
+        ForeignKey('data_gameCharacters.id'))
     character: Mapped["GameCharacter"] = relationship()
     cardRarityType: Mapped[Rarity] = mapped_column(String(15))
     attribute: Mapped[Attributes] = mapped_column(String(10))
@@ -240,7 +271,8 @@ class Card(Base):
     skill: Mapped["Skill"] = relationship()
     releaseAt: Mapped[Date] = mapped_column(Date)
     assetBundleName: Mapped[str] = mapped_column(String(12))
-    cardSupplyId: Mapped[int] = mapped_column(ForeignKey('data_cardSupplies.id'))
+    cardSupplyId: Mapped[int] = mapped_column(
+        ForeignKey('data_cardSupplies.id'))
     cardSupply: Mapped["CardSupply"] = relationship()
     availableEN: Mapped[bool] = mapped_column(Boolean)
     sideStories: Mapped[List["CardEpisode"]] = relationship()
@@ -300,6 +332,7 @@ class CardEpisode(Base):
     cardId: Mapped[int] = mapped_column(ForeignKey('data_cards.id'))
 
 
+# Music
 class MusicArtist(Base):
     __tablename__ = 'data_musicArtists'
 
@@ -409,7 +442,7 @@ class Music(Base):
             "Seq": self.seq,
             "Title": self.title,
             "Unit": "\n".join(self.get_units()),
-            "Producer": self.creatorArtist.name if self.creatorArtistId else self.composer,
+            "Producer": self.creatorArtist.name if self.creatorArtistId else self.composer,  # type: ignore
             "Lyricist": self.lyricist,
             "Composer": self.composer,
             "Arranger": self.arranger,
@@ -434,7 +467,7 @@ class Music(Base):
 
     def is_removed(self) -> bool:
         '''Returns True if the song has been removed. Removed songs have no release date, so it gets set to 1969-12-31.'''
-        return self.releasedAt < datetime.date(1970, 1, 1)
+        return self.releasedAt < datetime.date(1970, 1, 1)  # type: ignore
 
 
 class MusicDifficulty(Base):
@@ -491,6 +524,7 @@ class GachaPickup(Base):
         return self.id
 
 
+# Honors
 class HonorLevel(Base):
     __tablename__ = 'data_honorLevels'
 
@@ -540,12 +574,14 @@ class HonorDirectory(Base):
     dirType: Mapped[HonorDirectoryType] = mapped_column(String(11))
     files: Mapped[List["HonorFile"]] = relationship(back_populates='directory')
 
+
 class HonorFile(Base):
     __tablename__ = 'sb_honorPath'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     filename: Mapped[str] = mapped_column(String(100))
-    directoryId: Mapped[str] = mapped_column(ForeignKey('sb_honorDirectory.directory'))
+    directoryId: Mapped[str] = mapped_column(
+        ForeignKey('sb_honorDirectory.directory'))
     directory: Mapped[HonorDirectory] = relationship(back_populates='files')
     downloadedEN: Mapped[bool] = mapped_column(Boolean)
 
@@ -554,3 +590,160 @@ class HonorFile(Base):
 
     def get_url(self) -> str:
         return f'https://storage.sekai.best/sekai-{"en" if self.directory.availableEN else "jp"}-assets/{self.directory.directory}{self.filename}'
+
+
+# MySEKAI
+class MySekaiFixtureTag(Base):
+    __tablename__ = 'data_mySekaiFixtureTags'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    pronunciation: Mapped[str] = mapped_column(String(100))
+    mySekaiFixtureTagType: Mapped[str] = mapped_column(String(100))
+    externalId: Mapped[Optional[int]] = mapped_column(Integer)
+
+
+class MySekaiFixture(Base):
+    __tablename__ = 'data_mySekaiFixtures'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer)
+
+    mysekaiFixtureType: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(200))
+    pronunciation: Mapped[str] = mapped_column(String(100))
+    flavorText: Mapped[str] = mapped_column(String(200))
+
+    gridWidth: Mapped[int] = mapped_column(Integer)
+    gridDepth: Mapped[int] = mapped_column(Integer)
+    gridHeight: Mapped[int] = mapped_column(Integer)
+
+    mysekaiFixtureMainGenreId: Mapped[int] = mapped_column(Integer)
+    mysekaiFixtureSubGenreId: Mapped[Optional[int]] = mapped_column(Integer)
+    mysekaiFixtureHandleType: Mapped[str] = mapped_column(String(100))
+    mysekaiSettableSiteType: Mapped[str] = mapped_column(String(100))
+    mysekaiSettableLayoutType: Mapped[str] = mapped_column(String(100))
+    mysekaiFixturePutType: Mapped[str] = mapped_column(String(100))
+    mysekaiFixturePutSoundId: Mapped[int] = mapped_column(Integer)
+    mysekaiFixtureFootstepId: Mapped[Optional[int]] = mapped_column(Integer)
+
+    isAssembled: Mapped[bool] = mapped_column(Boolean)
+    isDisassembled: Mapped[bool] = mapped_column(Boolean)
+    mysekaiFixturePlayerActionType: Mapped[str] = mapped_column(String(100))
+
+    isGameCharacterAction: Mapped[bool] = mapped_column(Boolean)
+
+    assetbundleName: Mapped[str] = mapped_column(String(100))
+
+    mysekaiFixtureTagId1: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_mySekaiFixtureTags.id'))
+    mysekaiFixtureTagId2: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_mySekaiFixtureTags.id'))
+    mysekaiFixtureTagId3: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_mySekaiFixtureTags.id'))
+    mysekaiFixtureTagId4: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_mySekaiFixtureTags.id'))
+
+
+class MySekaiBlueprint(Base):
+    __tablename__ = 'data_mySekaiBlueprints'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mysekaiCraftType: Mapped[Optional[str]] = mapped_column(String(100))
+    craftTargetId: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_mySekaiFixtures.id'))
+    isEnableSketch: Mapped[Optional[bool]] = mapped_column(Boolean)
+    isObtainedByConvert: Mapped[Optional[bool]] = mapped_column(Boolean)
+    craftCountLimit: Mapped[Optional[int]] = mapped_column(Integer)
+
+    craftTarget: Mapped["MySekaiFixture"] = relationship()
+
+
+class MySekaiCharacterTalkCondition(Base):
+    __tablename__ = 'data_mySekaiCharacterTalkConditions'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mysekaiCharacterTalkConditionType: Mapped[MySekaiCharacterTalkConditionType] = mapped_column(
+        String(30))
+    mysekaiCharacterTalkConditionTypeValue: Mapped[int] = mapped_column(
+        Integer)
+
+
+class MySekaiCharacterTalkTweet(Base):
+    __tablename__ = 'data_mySekaiCharacterTalkTweets'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    motionName: Mapped[Optional[str]] = mapped_column(String(100))
+    emoticonName: Mapped[Optional[str]] = mapped_column(String(100))
+    expressionEyeName: Mapped[str] = mapped_column(String(100))
+    expressionMouthName: Mapped[str] = mapped_column(String(100))
+    text: Mapped[str] = mapped_column(String(100))
+
+
+class MySekaiGameCharacterUnitGroup(Base):
+    __tablename__ = 'data_mySekaiGameCharacterUnitGroups'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    gameCharacterUnitId1: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_gameCharacters.id'))
+    gameCharacterUnitId2: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_gameCharacters.id'))
+    gameCharacterUnitId3: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_gameCharacters.id'))
+    gameCharacterUnitId4: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_gameCharacters.id'))
+    gameCharacterUnitId5: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('data_gameCharacters.id'))
+
+    def get_gameCharacterUnitIds(self) -> List[int]:
+        return [x for x in [self.gameCharacterUnitId1, self.gameCharacterUnitId2, self.gameCharacterUnitId3, self.gameCharacterUnitId4, self.gameCharacterUnitId5] if x is not None]
+
+
+class MySekaiCharacterTalkConditionGroup(Base):
+    __tablename__ = 'data_mySekaiCharacterTalkConditionGroups'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    groupId: Mapped[int] = mapped_column(Integer)
+    mysekaiCharacterTalkConditionId: Mapped[int] = mapped_column(
+        ForeignKey('data_mySekaiCharacterTalkConditions.id'))
+
+    mysekaiCharacterTalkCondition: Mapped[MySekaiCharacterTalkCondition] = relationship(
+    )
+
+
+class MySekaiCharacterTalk(Base):
+    __tablename__ = 'data_mySekaiCharacterTalks'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mysekaiGameCharacterUnitGroupId: Mapped[int] = mapped_column(
+        ForeignKey('data_mySekaiGameCharacterUnitGroups.id'))
+    mysekaiCharacterTalkConditionGroupId: Mapped[int] = mapped_column(
+        ForeignKey('data_mySekaiCharacterTalkConditionGroups.id'))
+    mysekaiSiteGroupId: Mapped[int] = mapped_column(Integer)
+    mysekaiCharacterTalkTermId: Mapped[int] = mapped_column(Integer)
+    characterArchiveMysekaiCharacterTalkGroupId: Mapped[int] = mapped_column(
+        Integer)
+    assetbundleName: Mapped[str] = mapped_column(String(100))
+    lua: Mapped[str] = mapped_column(String(100))
+    isEnabledForMulti: Mapped[bool] = mapped_column(Boolean)
+
+    mysekaiGameCharacterUnitGroup: Mapped[MySekaiGameCharacterUnitGroup] = relationship(
+    )
+    mysekaiCharacterTalkConditionGroup: Mapped[MySekaiCharacterTalkConditionGroup] = relationship(
+    )
+
+
+class MySekaiCharacterTalkPreAction(Base):
+    __tablename__ = 'data_mySekaiCharacterTalkPreAction'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mysekaiCharacterTalkId: Mapped[int] = mapped_column(
+        ForeignKey('data_mySekaiCharacterTalks.id'))
+    mysekaiCharacterTalkTweetId: Mapped[int] = mapped_column(
+        ForeignKey('data_mySekaiCharacterTalkTweets.id'))
+    mysekaiCharacterTalkFixtureTimelineGroupId: Mapped[Optional[int]] = mapped_column(
+        Integer)
+
+    mysekaiCharacterTalk: Mapped[MySekaiCharacterTalk] = relationship()
+    mysekaiCharacterTalkTweet: Mapped[MySekaiCharacterTalkTweet] = relationship(
+    )

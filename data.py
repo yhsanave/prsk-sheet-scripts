@@ -8,9 +8,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import config
-from model import (Base, Card, CardEpisode, CardSupply, GameCharacter, Honor,
+from model import (Base, Card, CardEpisode, CardSupply, GameCharacter, GameCharacterUnit, Honor,
                    HonorGroup, HonorLevel, Music, MusicArtist, MusicDifficulty,
-                   MusicOriginal, MusicTag, Skill, Unit)
+                   MusicOriginal, MusicTag, MySekaiBlueprint, MySekaiCharacterTalk,
+                   MySekaiCharacterTalkCondition, MySekaiCharacterTalkConditionGroup, MySekaiCharacterTalkPreAction,
+                   MySekaiCharacterTalkTweet, MySekaiFixture, MySekaiFixtureTag, MySekaiGameCharacterUnitGroup,
+                   Skill, Unit)
 
 
 def merge_data(subset: Iterable, superset: Iterable) -> List:
@@ -47,7 +50,8 @@ def fetch_data():
 def import_data():
     """Parse the data from the repository and insert it into the database."""
     engine = create_engine(config.DATABASE_STRING)
-    Base.metadata.drop_all(engine, [Base.metadata.tables[t] for t in Base.metadata.tables if t.startswith('data_')])
+    Base.metadata.drop_all(engine, [Base.metadata.tables[t]
+                           for t in Base.metadata.tables if t.startswith('data_')])
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -78,19 +82,35 @@ def import_data():
     session.add_all(characters)
     print(f"Imported {len(characterData)} characters.")
 
+    # Import Game Character Units
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'gameCharacterUnits.json'), 'r', encoding="utf8") as f:
+        characterUnitData: List[Dict] = json.load(f)
+        characterUnits = map(lambda c: GameCharacterUnit(
+            id=c["id"],
+            gameCharacterId=c["gameCharacterId"],
+            unitName=c["unit"],
+            colorCode=c["colorCode"],
+            skinColorCode=c["skinColorCode"],
+            skinShadowColorCode1=c["skinShadowColorCode1"],
+            skinShadowColorCode2=c["skinShadowColorCode2"]
+        ), characterUnitData)
+
+    session.add_all(characterUnits)
+    print(f"Imported {len(characterUnitData)} game character units.")
+
     # Import Skills
-    with open(os.path.join(config.DATA_DIRECTORY_JP, 'skills.json'), 'r', encoding="utf8") as f:
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'skills.json'), 'r', encoding="utf8") as f:
         skillData: List[Dict] = json.load(f)
         skillsEN = map(lambda s: Skill(
             id=s["id"],
-            skillType=Skill.parse_skill_type(s).value
+            skillType=Skill.parse_skill_type(s).value  # type: ignore
         ), skillData)
 
     with open(os.path.join(config.DATA_DIRECTORY_JP, 'skills.json'), 'r', encoding="utf8") as f:
         skillData: List[Dict] = json.load(f)
         skillsJP = map(lambda s: Skill(
             id=s["id"],
-            skillType=Skill.parse_skill_type(s).value
+            skillType=Skill.parse_skill_type(s).value  # type: ignore
         ), skillData)
 
     skills = merge_data(skillsEN, skillsJP)
@@ -390,6 +410,295 @@ def import_data():
     honorGroups = merge_data(honorGroupsEN, honorGroupsJP)
     session.add_all(honorGroups)
     print(f"Imported {len(honorGroups)} honor groups.")
+
+    # Import MySEKAI Fixture Tags
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiFixtureTags.json'), 'r', encoding="utf8") as f:
+        mySekaiFixtureTagsData: List[Dict] = json.load(f)
+        mySekaiFixtureTagsEN = map(lambda t: MySekaiFixtureTag(
+            id=t["id"],
+            name=t["name"],
+            pronunciation=t["pronunciation"],
+            mySekaiFixtureTagType=t["mysekaiFixtureTagType"],
+            externalId=t.get("externalId", None)
+        ), mySekaiFixtureTagsData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'mysekaiFixtureTags.json'), 'r', encoding="utf8") as f:
+        mySekaiFixtureTagsData: List[Dict] = json.load(f)
+        mySekaiFixtureTagsJP = map(lambda t: MySekaiFixtureTag(
+            id=t["id"],
+            name=t["name"],
+            pronunciation=t["pronunciation"],
+            mySekaiFixtureTagType=t["mysekaiFixtureTagType"],
+            externalId=t.get("externalId", None)
+        ), mySekaiFixtureTagsData)
+
+    mySekaiFixtureTags = merge_data(mySekaiFixtureTagsEN, mySekaiFixtureTagsJP)
+    session.add_all(mySekaiFixtureTags)
+    print(f"Imported {len(mySekaiFixtureTags)} MySEKAI Fixture Tags")
+
+    # Import MySEKAI Fixtures
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiFixtures.json'), 'r', encoding="utf8") as f:
+        mySekaiFixturesData: List[Dict] = json.load(f)
+        mySekaiFixturesEN = map(lambda f: MySekaiFixture(
+            id=f["id"],
+            seq=f["seq"],
+            mysekaiFixtureType=f["mysekaiFixtureType"],
+            name=f["name"],
+            pronunciation=f["pronunciation"],
+            flavorText=f["flavorText"],
+            gridWidth=f["gridSize"]["width"],
+            gridDepth=f["gridSize"]["depth"],
+            gridHeight=f["gridSize"]["height"],
+            mysekaiFixtureMainGenreId=f["mysekaiFixtureMainGenreId"],
+            mysekaiFixtureSubGenreId=f.get("mysekaiFixtureSubGenreId"),
+            mysekaiFixtureHandleType=f["mysekaiFixtureHandleType"],
+            mysekaiSettableSiteType=f["mysekaiSettableSiteType"],
+            mysekaiSettableLayoutType=f["mysekaiSettableLayoutType"],
+            mysekaiFixturePutType=f["mysekaiFixturePutType"],
+            mysekaiFixturePutSoundId=f["mysekaiFixturePutSoundId"],
+            mysekaiFixtureFootstepId=f.get("mysekaiFixtureFootstepId"),
+            isAssembled=f["isAssembled"],
+            isDisassembled=f["isDisassembled"],
+            mysekaiFixturePlayerActionType=f["mysekaiFixturePlayerActionType"],
+            isGameCharacterAction=f["isGameCharacterAction"],
+            assetbundleName=f["assetbundleName"],
+            mysekaiFixtureTagId1=f["mysekaiFixtureTagGroup"].get(
+                "mysekaiFixtureTagId1"),
+            mysekaiFixtureTagId2=f["mysekaiFixtureTagGroup"].get(
+                "mysekaiFixtureTagId2"),
+            mysekaiFixtureTagId3=f["mysekaiFixtureTagGroup"].get(
+                "mysekaiFixtureTagId3"),
+            mysekaiFixtureTagId4=f["mysekaiFixtureTagGroup"].get(
+                "mysekaiFixtureTagId4")
+        ), mySekaiFixturesData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'mysekaiFixtures.json'), 'r', encoding="utf8") as f:
+        mySekaiFixturesData: List[Dict] = json.load(f)
+        mySekaiFixturesJP = map(lambda f: MySekaiFixture(
+            id=f["id"],
+            seq=f["seq"],
+            mysekaiFixtureType=f["mysekaiFixtureType"],
+            name=f["name"],
+            pronunciation=f["pronunciation"],
+            flavorText=f["flavorText"],
+            gridWidth=f["gridSize"]["width"],
+            gridDepth=f["gridSize"]["depth"],
+            gridHeight=f["gridSize"]["height"],
+            mysekaiFixtureMainGenreId=f["mysekaiFixtureMainGenreId"],
+            mysekaiFixtureSubGenreId=f.get("mysekaiFixtureSubGenreId"),
+            mysekaiFixtureHandleType=f["mysekaiFixtureHandleType"],
+            mysekaiSettableSiteType=f["mysekaiSettableSiteType"],
+            mysekaiSettableLayoutType=f["mysekaiSettableLayoutType"],
+            mysekaiFixturePutType=f["mysekaiFixturePutType"],
+            mysekaiFixturePutSoundId=f["mysekaiFixturePutSoundId"],
+            mysekaiFixtureFootstepId=f.get("mysekaiFixtureFootstepId"),
+            isAssembled=f["isAssembled"],
+            isDisassembled=f["isDisassembled"],
+            mysekaiFixturePlayerActionType=f["mysekaiFixturePlayerActionType"],
+            isGameCharacterAction=f["isGameCharacterAction"],
+            assetbundleName=f["assetbundleName"],
+            mysekaiFixtureTagId1=f["mysekaiFixtureTagGroup"].get(
+                "mysekaiFixtureTagId1"),
+            mysekaiFixtureTagId2=f["mysekaiFixtureTagGroup"].get(
+                "mysekaiFixtureTagId2"),
+            mysekaiFixtureTagId3=f["mysekaiFixtureTagGroup"].get(
+                "mysekaiFixtureTagId3"),
+            mysekaiFixtureTagId4=f["mysekaiFixtureTagGroup"].get(
+                "mysekaiFixtureTagId4")
+        ), mySekaiFixturesData)
+
+    mySekaiFixtures = merge_data(mySekaiFixturesEN, mySekaiFixturesJP)
+    session.add_all(mySekaiFixtures)
+
+    print(f"Imported {len(mySekaiFixtures)} MySEKAI Fixtures")
+
+    # Import MySEKAI Blueprints
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiBlueprints.json'), 'r', encoding="utf8") as f:
+        mySekaiBlueprintsData: List[Dict] = json.load(f)
+        mySekaiBlueprintsEN = map(lambda b: MySekaiBlueprint(
+            id=b["id"],
+            mysekaiCraftType=b["mysekaiCraftType"],
+            craftTargetId=b["craftTargetId"],
+            isEnableSketch=b["isEnableSketch"],
+            isObtainedByConvert=b["isObtainedByConvert"],
+            craftCountLimit=b.get("craftCountLimit")
+        ), mySekaiBlueprintsData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'mysekaiBlueprints.json'), 'r', encoding="utf8") as f:
+        mySekaiBlueprintsData: List[Dict] = json.load(f)
+        mySekaiBlueprintsJP = map(lambda b: MySekaiBlueprint(
+            id=b["id"],
+            mysekaiCraftType=b["mysekaiCraftType"],
+            craftTargetId=b["craftTargetId"],
+            isEnableSketch=b["isEnableSketch"],
+            isObtainedByConvert=b["isObtainedByConvert"],
+            craftCountLimit=b.get("craftCountLimit")
+        ), mySekaiBlueprintsData)
+
+    mySekaiBlueprints = merge_data(mySekaiBlueprintsEN, mySekaiBlueprintsJP)
+    session.add_all(mySekaiBlueprints)
+    print(f"Imported {len(mySekaiBlueprints)} MySEKAI Blueprints")
+
+    # MySEKAI Character Talk Conditions
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiCharacterTalkConditions.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalkConditionsData: List[Dict] = json.load(f)
+        mySekaiCharacterTalkConditionsEN = map(lambda c: MySekaiCharacterTalkCondition(
+            id=c["id"],
+            mysekaiCharacterTalkConditionType=c["mysekaiCharacterTalkConditionType"],
+            mysekaiCharacterTalkConditionTypeValue=c["mysekaiCharacterTalkConditionTypeValue"]
+        ), mySekaiCharacterTalkConditionsData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'mysekaiCharacterTalkConditions.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalkConditionsData: List[Dict] = json.load(f)
+        mySekaiCharacterTalkConditionsJP = map(lambda c: MySekaiCharacterTalkCondition(
+            id=c["id"],
+            mysekaiCharacterTalkConditionType=c["mysekaiCharacterTalkConditionType"],
+            mysekaiCharacterTalkConditionTypeValue=c["mysekaiCharacterTalkConditionTypeValue"]
+        ), mySekaiCharacterTalkConditionsData)
+
+    mySekaiCharacterTalkConditions = merge_data(
+        mySekaiCharacterTalkConditionsEN, mySekaiCharacterTalkConditionsJP)
+    session.add_all(mySekaiCharacterTalkConditions)
+    print(
+        f"Imported {len(mySekaiCharacterTalkConditions)} MySEKAI Character Talk Conditions")
+
+    # MySEKAI Character Talk Tweets
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiCharacterTalkTweets.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalkTweetsData: List[Dict] = json.load(f)
+        mySekaiCharacterTalkTweetsEN = map(lambda t: MySekaiCharacterTalkTweet(
+            id=t["id"],
+            motionName=t.get("motionName"),
+            emoticonName=t.get("emoticonName"),
+            expressionEyeName=t["expressionEyeName"],
+            expressionMouthName=t["expressionMouthName"],
+            text=t["text"]
+        ), mySekaiCharacterTalkTweetsData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'mysekaiCharacterTalkTweets.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalkTweetsData: List[Dict] = json.load(f)
+        mySekaiCharacterTalkTweetsJP = map(lambda t: MySekaiCharacterTalkTweet(
+            id=t["id"],
+            motionName=t.get("motionName"),
+            emoticonName=t.get("emoticonName"),
+            expressionEyeName=t["expressionEyeName"],
+            expressionMouthName=t["expressionMouthName"],
+            text=t["text"]
+        ), mySekaiCharacterTalkTweetsData)
+
+    mySekaiCharacterTalkTweets = merge_data(
+        mySekaiCharacterTalkTweetsEN, mySekaiCharacterTalkTweetsJP)
+    session.add_all(mySekaiCharacterTalkTweets)
+    print(
+        f"Imported {len(mySekaiCharacterTalkTweets)} MySEKAI Character Talk Tweets")
+
+    # Import MySEKAI Character Talks
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiCharacterTalks.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalksData: List[Dict] = json.load(f)
+        mySekaiCharacterTalksEN = map(lambda t: MySekaiCharacterTalk(
+            id=t["id"],
+            mysekaiGameCharacterUnitGroupId=t["mysekaiGameCharacterUnitGroupId"],
+            mysekaiCharacterTalkConditionGroupId=t["mysekaiCharacterTalkConditionGroupId"],
+            mysekaiSiteGroupId=t["mysekaiSiteGroupId"],
+            mysekaiCharacterTalkTermId=t["mysekaiCharacterTalkTermId"],
+            characterArchiveMysekaiCharacterTalkGroupId=t["characterArchiveMysekaiCharacterTalkGroupId"],
+            assetbundleName=t["assetbundleName"],
+            lua=t["lua"],
+            isEnabledForMulti=t["isEnabledForMulti"]
+        ), mySekaiCharacterTalksData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'mysekaiCharacterTalks.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalksData: List[Dict] = json.load(f)
+        mySekaiCharacterTalksJP = map(lambda t: MySekaiCharacterTalk(
+            id=t["id"],
+            mysekaiGameCharacterUnitGroupId=t["mysekaiGameCharacterUnitGroupId"],
+            mysekaiCharacterTalkConditionGroupId=t["mysekaiCharacterTalkConditionGroupId"],
+            mysekaiSiteGroupId=t["mysekaiSiteGroupId"],
+            mysekaiCharacterTalkTermId=t["mysekaiCharacterTalkTermId"],
+            characterArchiveMysekaiCharacterTalkGroupId=t["characterArchiveMysekaiCharacterTalkGroupId"],
+            assetbundleName=t["assetbundleName"],
+            lua=t["lua"],
+            isEnabledForMulti=t["isEnabledForMulti"]
+        ), mySekaiCharacterTalksData)
+
+    mySekaiCharacterTalks = merge_data(
+        mySekaiCharacterTalksEN, mySekaiCharacterTalksJP)
+    session.add_all(mySekaiCharacterTalks)
+    print(f"Imported {len(mySekaiCharacterTalks)} MySEKAI Character Talks")
+
+    # Import MySEKAI Character Talk Pre-Actions
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiCharacterTalkPreActions.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalkPreActionsData: List[Dict] = json.load(f)
+        mySekaiCharacterTalkPreActionsEN = map(lambda t: MySekaiCharacterTalkPreAction(
+            id=t["id"],
+            mysekaiCharacterTalkId=t["mysekaiCharacterTalkId"],
+            mysekaiCharacterTalkTweetId=t["mysekaiCharacterTalkTweetId"]
+        ), mySekaiCharacterTalkPreActionsData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'mysekaiCharacterTalkPreActions.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalkPreActionsData: List[Dict] = json.load(f)
+        mySekaiCharacterTalkPreActionsJP = map(lambda t: MySekaiCharacterTalkPreAction(
+            id=t["id"],
+            mysekaiCharacterTalkId=t["mysekaiCharacterTalkId"],
+            mysekaiCharacterTalkTweetId=t["mysekaiCharacterTalkTweetId"]
+        ), mySekaiCharacterTalkPreActionsData)
+
+    mySekaiCharacterTalkPreActions = merge_data(
+        mySekaiCharacterTalkPreActionsEN, mySekaiCharacterTalkPreActionsJP)
+    session.add_all(mySekaiCharacterTalkPreActions)
+    print(
+        f"Imported {len(mySekaiCharacterTalkPreActions)} MySEKAI Character Talk Pre-Actions")
+
+    # Import MySEKAI Character Unit Groups
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiGameCharacterUnitGroups.json'), 'r', encoding="utf8") as f:
+        mySekaiGameCharacterUnitGroupsData: List[Dict] = json.load(f)
+        mySekaiGameCharacterUnitGroupsEN = map(lambda g: MySekaiGameCharacterUnitGroup(
+            id=g["id"],
+            gameCharacterUnitId1=g.get("gameCharacterUnitId1"),
+            gameCharacterUnitId2=g.get("gameCharacterUnitId2"),
+            gameCharacterUnitId3=g.get("gameCharacterUnitId3"),
+            gameCharacterUnitId4=g.get("gameCharacterUnitId4"),
+            gameCharacterUnitId5=g.get("gameCharacterUnitId5")
+        ), mySekaiGameCharacterUnitGroupsData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiGameCharacterUnitGroups.json'), 'r', encoding="utf8") as f:
+        mySekaiGameCharacterUnitGroupsData: List[Dict] = json.load(f)
+        mySekaiGameCharacterUnitGroupsJP = map(lambda g: MySekaiGameCharacterUnitGroup(
+            id=g["id"],
+            gameCharacterUnitId1=g.get("gameCharacterUnitId1"),
+            gameCharacterUnitId2=g.get("gameCharacterUnitId2"),
+            gameCharacterUnitId3=g.get("gameCharacterUnitId3"),
+            gameCharacterUnitId4=g.get("gameCharacterUnitId4"),
+            gameCharacterUnitId5=g.get("gameCharacterUnitId5")
+        ), mySekaiGameCharacterUnitGroupsData)
+
+    mySekaiGameCharacterUnitGroups = merge_data(
+        mySekaiGameCharacterUnitGroupsEN, mySekaiGameCharacterUnitGroupsJP)
+    session.add_all(mySekaiGameCharacterUnitGroups)
+    print(
+        f"Imported {len(mySekaiGameCharacterUnitGroups)} MySEKAI Game Character Unit Groups")
+
+    # Import MySEKAI Character Talk Condition Groups
+    with open(os.path.join(config.DATA_DIRECTORY_EN, 'mysekaiCharacterTalkConditionGroups.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalkConditionGroupsData: List[Dict] = json.load(f)
+        mySekaiCharacterTalkConditionGroupsEN = map(lambda g: MySekaiCharacterTalkConditionGroup(
+            id=g["id"],
+            groupId=g["groupId"],
+            mysekaiCharacterTalkConditionId=g["mysekaiCharacterTalkConditionId"]
+        ), mySekaiCharacterTalkConditionGroupsData)
+
+    with open(os.path.join(config.DATA_DIRECTORY_JP, 'mysekaiCharacterTalkConditionGroups.json'), 'r', encoding="utf8") as f:
+        mySekaiCharacterTalkConditionGroupsData: List[Dict] = json.load(f)
+        mySekaiCharacterTalkConditionGroupsJP = map(lambda g: MySekaiCharacterTalkConditionGroup(
+            id=g["id"],
+            groupId=g["groupId"],
+            mysekaiCharacterTalkConditionId=g["mysekaiCharacterTalkConditionId"]
+        ), mySekaiCharacterTalkConditionGroupsData)
+
+    mySekaiCharacterTalkConditionGroups = merge_data(
+        mySekaiCharacterTalkConditionGroupsEN, mySekaiCharacterTalkConditionGroupsJP)
+    session.add_all(mySekaiCharacterTalkConditionGroups)
+    print(
+        f"Imported {len(mySekaiCharacterTalkConditionGroups)} MySEKAI Character Talk Condition Groups")
 
     session.commit()
     session.close()

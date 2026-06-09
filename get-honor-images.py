@@ -15,7 +15,7 @@ import config
 from model import HonorDirectory, HonorDirectoryType, HonorFile
 
 
-def get_dirs(baseUrl: str, prefix: str, cachedDirs: List[str] = [], token: str = None, prog: Progress = None, progTask: TaskID = None, isContinue: bool = False) -> Tuple[List[str], List[str]]:
+def get_dirs(baseUrl: str, prefix: str, cachedDirs: List[str] = [], token: str = None, prog: Progress = None, progTask: TaskID = None, isContinue: bool = False) -> Tuple[List[str], List[str]]: # type: ignore
     '''Enumerates the given directory.'''
     if prefix in cachedDirs:
         if prog:
@@ -42,7 +42,7 @@ def get_dirs(baseUrl: str, prefix: str, cachedDirs: List[str] = [], token: str =
 
     root = ET.fromstring(res.text)
     namespace = f'{root.tag.split("}")[0]}}}'
-    token = root.findtext(f"{namespace}NextContinuationToken")
+    token = root.findtext(f"{namespace}NextContinuationToken") # type: ignore
 
     # Get directories
     dirs = []
@@ -51,7 +51,7 @@ def get_dirs(baseUrl: str, prefix: str, cachedDirs: List[str] = [], token: str =
             dirs.append(item.text)
 
     if prog:
-        prog.update(progTask, total=prog.tasks[0].total + len(dirs))
+        prog.update(progTask, total=prog.tasks[0].total + len(dirs)) # type: ignore
 
     # Get files
     files = []
@@ -133,7 +133,7 @@ def get_honors(session: sqlalchemy.orm.Session, prefix: str, honorType: HonorDir
     ) as prog:
         task = prog.add_task('Getting EN Directories', total=0, path='')
         enHonorDirs, enHonorFiles = get_dirs(
-            'https://storage.sekai.best/sekai-en-assets/', prefix, cachedDirs, prog=prog, progTask=task)
+            'https://storage.sekai.best/sekai-en-assets/', prefix, cachedDirs, prog=prog, progTask=task) # type: ignore
 
     honorDirs = []
     for dir in enHonorDirs:
@@ -157,7 +157,7 @@ def get_honors(session: sqlalchemy.orm.Session, prefix: str, honorType: HonorDir
     ) as prog:
         task = prog.add_task('Getting JP Directories', total=0, path='')
         jpHonorDirs, jpHonorFiles = get_dirs(
-            'https://storage.sekai.best/sekai-jp-assets/', prefix, cachedDirs, prog=prog, progTask=task)
+            'https://storage.sekai.best/sekai-jp-assets/', prefix, cachedDirs, prog=prog, progTask=task)  # type: ignore
 
     honorDirs = []
     for dir in filter(lambda d: d not in enHonorDirs, jpHonorDirs):
@@ -236,7 +236,7 @@ if __name__ == "__main__":
             ).join(
                 HonorDirectory
             ).where(
-                HonorFile.directory
+                HonorFile.directory # type: ignore
             )
         ).scalars().all() if not os.path.exists(f.get_path())]
 

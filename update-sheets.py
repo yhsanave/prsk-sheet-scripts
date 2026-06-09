@@ -85,7 +85,7 @@ for k, g in groupby(crDegrees, lambda p: p.split(os.path.sep)[0]):
         k[3:].replace('-', ' '),
         *[f'{GITHUB_BASE_URL}/honor_baked/character/{p.replace(os.path.sep, "/")}' for p in g]
     ])
-crTitleSheet.update(rows, 'A2', value_input_option='USER_ENTERED')
+crTitleSheet.update(rows, 'A2', value_input_option='USER_ENTERED') # type: ignore
 
 crTitleSheet.update([['Sub', *range(0, 165, 5)]], 'A28')
 crDegrees = glob.glob('**/sub/*.png', root_dir=CR_TITLES_PATH, recursive=True)
@@ -95,7 +95,7 @@ for k, g in groupby(crDegrees, lambda p: p.split(os.path.sep)[0]):
         k[3:].replace('-', ' '),
         *[f'{GITHUB_BASE_URL}/honor_baked/character/{p.replace(os.path.sep, "/")}' for p in g]
     ])
-crTitleSheet.update(rows, 'A29', value_input_option='USER_ENTERED')
+crTitleSheet.update(rows, 'A29', value_input_option='USER_ENTERED') # type: ignore
 
 # Achievement Titles
 print("Writing Achievement sheets...")
@@ -109,7 +109,7 @@ for k, g in groupby(achievementDegreesMain, lambda p: p.split(os.path.sep)[0]):
         *[f'{GITHUB_BASE_URL}/honor_baked/achievement/{p.replace(os.path.sep, "/")}' for p in g]
     ])
 achievementSheetMain.clear()
-achievementSheetMain.update(rows, 'A1', value_input_option='USER_ENTERED')
+achievementSheetMain.update(rows, 'A1', value_input_option='USER_ENTERED') # type: ignore
 
 achievementSheetSub = masterSpread.worksheet("Achievements Sub")
 achievementDegreesSub = glob.glob(
@@ -121,4 +121,4 @@ for k, g in groupby(achievementDegreesSub, lambda p: p.split(os.path.sep)[0]):
         *[f'{GITHUB_BASE_URL}/honor_baked/achievement/{p.replace(os.path.sep, "/")}' for p in g]
     ])
 achievementSheetSub.clear()
-achievementSheetSub.update(rows, 'A1', value_input_option='USER_ENTERED')
+achievementSheetSub.update(rows, 'A1', value_input_option='USER_ENTERED') # type: ignore

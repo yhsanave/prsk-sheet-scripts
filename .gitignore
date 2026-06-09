@@ -134,3 +134,4 @@ output/
 api-key.json
 prsk-sheet-assets/
 .vscode/
+*.csv

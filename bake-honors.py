@@ -42,7 +42,7 @@ WORLD_LINK_ASSETBUNDLE_PATTERN = re.compile(r'.*(_cp\d)$')
 
 
 def parse_req(description: str) -> str:
-    return HONOR_REQUIREMENT_PATTERN.match(description).group(1).replace(',', '')
+    return HONOR_REQUIREMENT_PATTERN.match(description).group(1).replace(',', '') # type: ignore
 
 
 @dataclass
@@ -51,20 +51,20 @@ class DegreeImage:
     honorLevel: HonorLevel | None
     isSub: bool
 
-    def __init__(self, honor: Honor, honorLevel: HonorLevel = None, isSub: bool = False):
+    def __init__(self, honor: Honor, honorLevel: HonorLevel = None, isSub: bool = False):  # type: ignore
         self.honor = honor
         self.honorLevel = honorLevel
         self.isSub = isSub
 
     def is_world_link(self) -> bool:
-        assetbundleName = i.honorLevel.assetbundleName if i.honorLevel and i.honorLevel.assetbundleName else i.honor.assetbundleName
+        assetbundleName: str = i.honorLevel.assetbundleName if i.honorLevel and i.honorLevel.assetbundleName else i.honor.assetbundleName  # type: ignore
         return WORLD_LINK_ASSETBUNDLE_PATTERN.match(assetbundleName) is not None
 
     def get_bg_image(self) -> Image.Image:
         '''Returns the degree background image.'''
         if HonorType(self.honor.group.honorType) == HonorType.RANK_MATCH:
             path = os.path.join(
-                RANK_LIVE_PATH, self.honor.group.backgroundAssetbundleName)
+                RANK_LIVE_PATH, self.honor.group.backgroundAssetbundleName)  # type: ignore
         elif self.honor.group.backgroundAssetbundleName:
             path = os.path.join(
                 HONOR_PATH, self.honor.group.backgroundAssetbundleName)
@@ -72,6 +72,8 @@ class DegreeImage:
             path = os.path.join(HONOR_PATH, self.honorLevel.assetbundleName)
         elif self.honor.assetbundleName:
             path = os.path.join(HONOR_PATH, self.honor.assetbundleName)
+        else:
+            path = ""
 
         if not os.path.exists(path):
             return Image.new("RGBA", DEGREE_SUB_SIZE if self.isSub else DEGREE_MAIN_SIZE)
@@ -99,14 +101,14 @@ class DegreeImage:
             "RGBA", DEGREE_SUB_SIZE if self.isSub else DEGREE_MAIN_SIZE)
 
         if HonorType(self.honor.group.honorType) == HonorType.EVENT:
-            path = os.path.join(HONOR_PATH, self.honor.assetbundleName,
-                                'rank_sub.webp' if self.isSub else 'rank_main.webp')
+            path = os.path.join(HONOR_PATH, self.honor.assetbundleName,  # type: ignore
+                                'rank_sub.webp' if self.isSub else 'rank_main.webp')  # type: ignore
         elif HonorType(self.honor.group.honorType) == HonorType.RANK_MATCH:
-            path = os.path.join(RANK_LIVE_PATH, os.path.join(*self.honor.assetbundleName.split('/')),
+            path = os.path.join(RANK_LIVE_PATH, os.path.join(*self.honor.assetbundleName.split('/')), # type: ignore
                                 'sub.webp' if self.isSub else 'main.webp')
         elif self.honor.honorMissionType:
             path = os.path.join(
-                HONOR_PATH, self.honorLevel.assetbundleName, 'scroll.webp')
+                HONOR_PATH, self.honorLevel.assetbundleName, 'scroll.webp') # type: ignore
         else:
             return im
 
@@ -141,7 +143,7 @@ class DegreeImage:
         for pos in FC_HONOR_LEVEL_STAR_POS:
             im.paste(slot, pos, slot)
 
-        for pos in FC_HONOR_LEVEL_STAR_POS[:((self.honorLevel.level-1) % 10)+1]:
+        for pos in FC_HONOR_LEVEL_STAR_POS[:((self.honorLevel.level-1) % 10)+1]: # type: ignore
             im.paste(star, pos, star)
 
         return im
@@ -154,7 +156,7 @@ class DegreeImage:
         lv0Image = Image.open(DEGREE_LV_0_PATH)
         lv6Image = Image.open(DEGREE_LV_6_PATH)
 
-        for i in range(0, self.honorLevel.level):
+        for i in range(0, self.honorLevel.level): # type: ignore
             im.paste(lv0Image if i < 5 else lv6Image, HONOR_LEVEL_PIP_POS[i])
 
         return im
@@ -187,36 +189,36 @@ class DegreeImage:
     def get_save_path(self) -> str:
         match HonorType(self.honor.group.honorType):
             case HonorType.CHARACTER:
-                charLevel = parse_req(self.honorLevel.description)
+                charLevel = parse_req(self.honorLevel.description) # type: ignore
                 return os.path.join(
                     BAKED_PATH,
-                    i.honor.group.honorType,
+                    i.honor.group.honorType, # type: ignore
                     sanitize_filename(
-                        f'{i.honor.group.id:02d}-{i.honor.group.name}'),
+                        f'{i.honor.group.id:02d}-{i.honor.group.name}'), # type: ignore
                     'sub' if self.isSub else 'main',
                     f'CR{int(charLevel):03d}.png'
-                ).replace(' ', '-')
+                ).replace(' ', '-') # type: ignore
             case HonorType.ACHIEVEMENT if len(self.honor.levels) > 1 or len(self.honor.group.honors) > 1:
-                req = parse_req(self.honorLevel.description)
+                req = parse_req(self.honorLevel.description) # type: ignore
                 levels = chain(*[h.levels for h in self.honor.group.honors])
                 padding = max(len(parse_req(l.description)) for l in levels)
                 return os.path.join(
                     BAKED_PATH,
-                    i.honor.group.honorType,
+                    i.honor.group.honorType, # type: ignore
                     sanitize_filename(
-                        f'{i.honor.group.id:04d}-{i.honor.group.name}'),
+                        f'{i.honor.group.id:04d}-{i.honor.group.name}'), # type: ignore
                     'sub' if self.isSub else 'main',
                     '{1:0{0}}.png'.format(padding, int(req))
-                ).replace(' ', '-')
+                ).replace(' ', '-') # type: ignore
             case _:
                 return os.path.join(
                     BAKED_PATH,
-                    i.honor.group.honorType,
+                    i.honor.group.honorType, # type: ignore
                     sanitize_filename(
-                        f'{i.honor.group.id:04d}-{i.honor.group.name}'),
+                        f'{i.honor.group.id:04d}-{i.honor.group.name}'), # type: ignore
                     'sub' if self.isSub else 'main',
                     sanitize_filename(f'{self.honor.name}.png')
-                ).replace(' ', '-')
+                ).replace(' ', '-') # type: ignore
 
 
 if __name__ == "__main__":
@@ -224,7 +226,8 @@ if __name__ == "__main__":
         prog='bake-honors',
         description='Compiles the components of each honor into a single static image'
     )
-    parser.add_argument('-nu', '--no-update', action='store_true', help='Skip updating the DB. Use this if you have already pulled the DB.')
+    parser.add_argument('-nu', '--no-update', action='store_true',
+                        help='Skip updating the DB. Use this if you have already pulled the DB.')
     args = vars(parser.parse_args())
 
     # Get latest data
