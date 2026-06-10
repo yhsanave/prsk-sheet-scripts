@@ -45,7 +45,7 @@ for t in talks:
         grid[t.mysekaiCharacterTalkConditionGroup.mysekaiCharacterTalkCondition.mysekaiCharacterTalkConditionTypeValue][
             "Reactions"][t.mysekaiGameCharacterUnitGroup.gameCharacterUnitId5-1] = "TRUE"
 
-with open("mysekai-react-grid.csv", "w+", encoding="utf8") as f:
+with open(os.path.join("output","mysekai-react-grid.csv"), "w+", encoding="utf8") as f:
     print("Fixture,Ichika,Saki,Honami,Shiho,Minori,Haruka,Airi,Shizuku,Kohane,An,Akito,Toya,Tsukasa,Emu,Nene,Rui,Kanade,Mafuyu,Ena,Mizuki,VS Miku,VS Rin,VS Len,VS Luka,VS Meiko,VS Kaito,LN Miku,MMJ Miku,VBS Miku,WxS Miku,N25 Miku,LN Rin,MMJ Rin,VBS Rin,WxS Rin,N25 Rin,LN Len,MMJ Len,VBS Len,WxS Len,N25 Len,LN Luka,MMJ Luka,VBS Luka,WxS Luka,N25 Luka,LN Meiko,MMJ Meiko,VBS Meiko,WxS Meiko,N25 Meiko,LN Kaito,MMJ Kaito,VBS Kaito,WxS Kaito,N25 Kaito", file=f)
     for r in grid.values():
         if any(map(lambda x: x == "TRUE", r["Reactions"])):

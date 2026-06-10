@@ -483,6 +483,7 @@ class MusicDifficulty(Base):
         return self.id
 
 
+# Gacha
 class Gacha(Base):
     __tablename__ = 'data_gachas'
 
@@ -643,6 +644,9 @@ class MySekaiFixture(Base):
         ForeignKey('data_mySekaiFixtureTags.id'))
     mysekaiFixtureTagId4: Mapped[Optional[int]] = mapped_column(
         ForeignKey('data_mySekaiFixtureTags.id'))
+
+    def get_thumbnail_url(self) -> str:
+        return f"https://storage.sekai.best/sekai-jp-assets/mysekai/thumbnail/fixture/{self.assetbundleName}_1.png"
 
 
 class MySekaiBlueprint(Base):
