@@ -277,10 +277,14 @@ def import_data():
                 m.get("releasedAt", 0)/1000).date(),
             publishedAt=datetime.fromtimestamp(m["publishedAt"]/1000).date(),
             fillerSec=m["fillerSec"],
-            catMV="mv" in m["categories"],
-            catMV2D="mv_2d" in m["categories"],
-            catOriginal="original" in m["categories"],
-            catImage="image" in m["categories"],
+            # catMV="mv" in m["categories"],
+            # catMV2D="mv_2d" in m["categories"],
+            # catOriginal="original" in m["categories"],
+            # catImage="image" in m["categories"],
+            catMV=False,  # A change in august 2026 broke the data structure so I'm removing this until that change comes to EN so I don't have 2 separate logics
+            catMV2D=False,
+            catOriginal=False,
+            catImage=False,
             availableEN=datetime.now().timestamp() >= m["publishedAt"]/1000
         ), musicData)
 
@@ -301,10 +305,14 @@ def import_data():
             publishedAt=datetime.fromtimestamp(
                 m["publishedAt"]/1000 + 31557600).date(),
             fillerSec=m["fillerSec"],
-            catMV="mv" in m["categories"],
-            catMV2D="mv_2d" in m["categories"],
-            catOriginal="original" in m["categories"],
-            catImage="image" in m["categories"],
+            # catMV="mv" in m["categories"],
+            # catMV2D="mv_2d" in m["categories"],
+            # catOriginal="original" in m["categories"],
+            # catImage="image" in m["categories"],
+            catMV=False,  # A change in august 2026 broke the data structure so I'm removing this until that change comes to EN so I don't have 2 separate logics
+            catMV2D=False,
+            catOriginal=False,
+            catImage=False,
             availableEN=False
         ), musicData)
 

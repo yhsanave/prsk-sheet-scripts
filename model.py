@@ -363,6 +363,13 @@ class MusicOriginal(Base):
     videoLink: Mapped[str] = mapped_column(String(100))
 
 
+class MusicCategory(Base):
+    __tablename__ = 'data_musicCategories'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    musicId: Mapped[int] = mapped_column(ForeignKey('data_musics.id'))
+    musicCategoryName: Mapped[str] = mapped_column(String(10))
+
 class Music(Base):
     __tablename__ = 'data_musics'
 
