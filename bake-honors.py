@@ -243,7 +243,8 @@ if __name__ == "__main__":
     honors = session.execute(select(Honor)).scalars().all()
 
     # Generate Images
-    shutil.rmtree(BAKED_PATH)
+    if os.path.exists(BAKED_PATH):
+        shutil.rmtree(BAKED_PATH)
 
     mainImages: List[DegreeImage] = []
     subImages: List[DegreeImage] = []
